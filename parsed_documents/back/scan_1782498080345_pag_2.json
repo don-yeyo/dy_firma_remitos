@@ -1,0 +1,24 @@
+{
+    "original_filename": "scan_1782498080345_pag_2.jpg",
+    "timestamp": "2026-06-26 16:00:41",
+    "extracted_text": {
+        "numero_remito": "R-0005-00472332",
+        "fecha": "26/05/2026",
+        "tipo": "TRIPLICADO",
+        "cliente_cod": "17321",
+        "cliente_desc": "LUCIO DI SANTO SA",
+        "cbte_relacionado": "A-00006-00403013",
+        "firma": {
+            "presente": true,
+            "tipo": "compleja",
+            "posicion_x": "izquierda",
+            "posicion_y": "abajo"
+        },
+        "sello": {
+            "presente": false,
+            "tipo": null,
+            "posicion_x": null,
+            "posicion_y": null
+        }
+    }
+}

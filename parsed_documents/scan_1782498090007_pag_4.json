@@ -1,0 +1,34 @@
+{
+    "original_filename": "scan_1782498090007_pag_4.jpg",
+    "timestamp": "2026-07-06 15:46:08",
+    "extracted_text": {
+        "numero_remito": "R-0005-00472945",
+        "fecha": "29/05/2026",
+        "tipo": "DUPLICADO",
+        "cliente_cod": "17464",
+        "cliente_desc": "S A IMPORTADORA Y EXPORTADORA DE LA PATAGONIA",
+        "cbte_relacionado": "A-00006-00403636",
+        "firmas": [
+            {
+                "emision": "comercio",
+                "complejidad": "media",
+                "posicion_x": "derecha",
+                "posicion_y": "medio"
+            }
+        ],
+        "sellos": [
+            {
+                "emision": "comercio",
+                "complejidad": "media",
+                "posicion_x": "medio",
+                "posicion_y": "medio"
+            },
+            {
+                "emision": "comercio",
+                "complejidad": "media",
+                "posicion_x": "derecha",
+                "posicion_y": "medio"
+            }
+        ]
+    }
+}

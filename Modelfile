@@ -1,0 +1,4 @@
+FROM qwen2.5vl:7b
+
+# Ampliar la ventana de contexto a 16384 tokens para poder procesar imágenes de alta resolución sin desbordamientos
+PARAMETER num_ctx 16384

@@ -1,0 +1,26 @@
+# Entornos virtuales
+.venv/
+venv/
+ENV/
+
+# Caché de Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Variables de entorno
+.env
+.env.local
+
+# Salidas de escaneo y temporales
+scanned_documents/
+tmp/
+*.jpg
+*.jpeg
+*.png
+*.pdf
+
+# Modelos descargados
+models/
+*.tflite

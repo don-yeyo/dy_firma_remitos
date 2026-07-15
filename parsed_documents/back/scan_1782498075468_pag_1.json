@@ -1,0 +1,24 @@
+{
+    "original_filename": "scan_1782498075468_pag_1.jpg",
+    "timestamp": "2026-06-26 16:00:34",
+    "extracted_text": {
+        "numero_remito": "R-0005-00473008",
+        "fecha": "30/05/2026",
+        "tipo": "DUPLICADO",
+        "cliente_cod": "17319",
+        "cliente_desc": "LA GALLEGA SUPERMERCADOS SA",
+        "cbte_relacionado": "A-00006-00403703",
+        "firma": {
+            "presente": true,
+            "tipo": "simple",
+            "posicion_x": "derecha",
+            "posicion_y": "medio"
+        },
+        "sello": {
+            "presente": true,
+            "tipo": "compleja",
+            "posicion_x": "izquierda",
+            "posicion_y": "medio"
+        }
+    }
+}
