@@ -4,18 +4,18 @@ Este plan detalla los cambios requeridos para implementar las reglas de negocio 
 
 ## Reglas de Negocio a Implementar
 
-### Requerimiento de Firmas según Copias (`fine_Copias`)
-- **Si `fine_Copias == 2`**:
+### Requerimiento de Firmas según Copias (`finne_Copias`)
+- **Si `finne_Copias == 2`**:
   - Solo se espera la firma del **Distribuidor** (`bot_confirmado_distribuidor`).
   - La firma del **Operador Logístico** (`bot_confirmado_cliente`) **no se requiere**.
-- **Si `fine_Copias > 2`**:
+- **Si `finne_Copias > 2`**:
   - Se espera la firma tanto del **Operador Logístico** (`bot_confirmado_cliente`) como la del **Distribuidor** (`bot_confirmado_distribuidor`).
 
 ### Criterio de Firma de Ejemplares
 - **Firma del Operador Logístico**: Se considera que firmó si el ejemplar **Duplicado** (`ocr_duplicado`) contiene al menos una firma o al menos un sello.
 - **Firma del Distribuidor**:
-  - Si `fine_Copias == 2`: Se considera que firmó si el ejemplar **Duplicado** (`ocr_duplicado`) contiene al menos una firma o al menos un sello.
-  - Si `fine_Copias > 2`: Se considera que firmó si alguno de los ejemplares **Triplicado** (`ocr_triplicado`) o **Cuatriplicado** (`ocr_cuatriplcado`) contiene al menos una firma o al menos un sello.
+  - Si `finne_Copias == 2`: Se considera que firmó si el ejemplar **Duplicado** (`ocr_duplicado`) contiene al menos una firma o al menos un sello.
+  - Si `finne_Copias > 2`: Se considera que firmó si alguno de los ejemplares **Triplicado** (`ocr_triplicado`) o **Cuatriplicado** (`ocr_cuatriplcado`) contiene al menos una firma o al menos un sello.
 
 ---
 
@@ -27,8 +27,8 @@ Este plan detalla los cambios requeridos para implementar las reglas de negocio 
 
 #### [MODIFY] [recognition.py](file:///c:/Users/gabrielt/Documents/Proyectos/AutomatizaciónRecepcionDocumentos/dy_automatizacion_recepcion_docs/recognition.py)
 - **Modificación de `_update_database_record`**:
-  1. Consultar de la base de datos el registro actual coincidente por `fine_transaccionID = transaccion_id`.
-  2. Leer las columnas `fine_Copias`, `ocr_original`, `ocr_duplicado`, `ocr_triplicado` y `ocr_cuatriplcado`.
+  1. Consultar de la base de datos el registro actual coincidente por `finne_transaccionID = transaccion_id`.
+  2. Leer las columnas `finne_Copias`, `ocr_original`, `ocr_duplicado`, `ocr_triplicado` y `ocr_cuatriplcado`.
   3. Consolidar la respuesta actual en el campo correspondiente (por ejemplo, si estamos procesando un Triplicado, actualizamos la columna de Triplicado conservando lo que ya hubiera en Duplicado y Original).
   4. Analizar la presencia de firmas/sellos en cada ejemplar consolidador para determinar `bot_confirmado_cliente` y `bot_confirmado_distribuidor` de acuerdo con las reglas de negocio detalladas anteriormente.
   5. Actualizar en la base de datos tanto la columna del ejemplar actual como los campos de confirmación:

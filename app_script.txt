@@ -1,0 +1,327 @@
+// esto ya funciona habria que ponerle parametros de fecha desde y hasta y generar un log para no traer dos veces lo mismo o no permitir traer el dia de hoy asi controlar por dia completo.
+// Validar como funciona la fecha Desde/Hasta, parece ser desde las 0 hasta las 0.
+
+
+var Libro = SpreadsheetApp.openById("15UQCdEloXQrBh0z0-s4AOpAMgicEiy0WqzHZoUsj7zA");
+
+function RetrieveAccessToken () {
+  let apiEndpoint = 'https://api.teamplace.finneg.com/api/oauth/token?grant_type=client_credentials&client_id=859744933f6e25e17025da8a040b45cc&client_secret=aea5d0380ec3b6596f72071a94f23c0b'
+
+
+  //probar grabar con la cuenta 2
+  // Makes the API call.
+  var response = UrlFetchApp.fetch(apiEndpoint);
+  return response
+}
+
+function testbajarRemitos(){
+  // bajarRemitos("2025-02-10", "2025-02-20");
+  //bajarRemitos2 ("2025-02-20","2025-03-20");
+  //bajarRemitos2 ("2025-03-20","2025-04-20");
+  //bajarRemitos2 ("2025-04-20","2025-05-20");
+  bajarRemitos2 ("2026-07-06","2026-07-07");
+  // primer error del 25 al 28 /9
+  //2do 25 al 29
+  //3ro 25 al 29
+  // andubo del 25 al 29
+}
+
+function bajarRemitos(fDesde,fHasta){
+  try {
+    enviar_Mail("marianog@donyeyo.com.ar","Inicio Sync APP Fima Remitos","Tiene que venir seguido de esto otro mail con desde que registro va a copiar la formula");
+    var HojaFRemitos=Libro.getSheetByName("Firma de Remitos");
+    var arregloHojaFRemitos  = HojaFRemitos.getDataRange().getValues()
+    var tmpHojaRemitosNuevos=[]
+    Logger.log("antes de RetrieveAccessToken");
+    var Resp1 = RetrieveAccessToken(); 
+
+    /*var URL_Remitos_de_Ayer="https://api.teamplace.finneg.com/api/reports/AnalisisFirmaRemitosDY?ACCESS_TOKEN=" + Resp1 + "&PARAMWEBREPORT_FechaDesde=" + fDesde + "&PARAMWEBREPORT_FechaHasta=" + fHasta + "&PARAMWEBREPORT_Documento=&PARAMWEBREPORT_Cliente=&PARAMWEBREPORT_CircuitoContable=&PARAMWEBREPORT_dimension=&PARAMWEBREPORT_valor=&PARAMWEBREPORT_Producto=&PARAMWEBREPORT_Moneda=&PARAMWEBREPORT_Empresa=EMPRE01&PARAMWEBREPORT_IncluirConceptosCalculados=false&PARAMWEBREPORT_Firma=";
+    */
+    var URL_Remitos_de_Ayer="https://api.teamplace.finneg.com/api/reports/AFIRMAREMVEN_MG?ACCESS_TOKEN=" + Resp1 + "&PARAMWEBREPORT_FechaDesde=" + fDesde + "&PARAMWEBREPORT_FechaHasta=" + fHasta + "&PARAMWEBREPORT_Documento=&PARAMWEBREPORT_Cliente=&PARAMWEBREPORT_CircuitoContable=&PARAMWEBREPORT_dimension=&PARAMWEBREPORT_valor=&PARAMWEBREPORT_Producto=&PARAMWEBREPORT_Moneda=&PARAMWEBREPORT_Empresa=EMPRE01&PARAMWEBREPORT_IncluirConceptosCalculados=false&PARAMWEBREPORT_Firma=";
+    
+    Logger.log(URL_Remitos_de_Ayer);
+
+    var response =UrlFetchApp.fetch(URL_Remitos_de_Ayer);
+    var responsedata= response.getContentText();
+    var json = JSON.parse(responsedata);
+    json.forEach(Remitos_de_Ayer=>{
+      /*Logger.log("Remitos_de_Ayer.ORGANIZACION_CODIGO:"+Remitos_de_Ayer.ORGANIZACION_CODIGO);
+      */
+      tmpHojaRemitosNuevos.push([Remitos_de_Ayer.TRANSACCIONID  ,Remitos_de_Ayer.FECHA ,Remitos_de_Ayer.CLIENTE ,Remitos_de_Ayer.TOTAL ,Remitos_de_Ayer.COMPROBANTE ,Remitos_de_Ayer.DOCNROINT ,"","", Remitos_de_Ayer.DESCRIPCION,"0","",Remitos_de_Ayer.ORGANIZACION_CODIGO,Remitos_de_Ayer.CANTIDADCOPIAS])
+    })
+
+    var proxrow = Proxreg(HojaFRemitos);
+    Logger.log("proxrow:"+proxrow);
+    Logger.log("tmpHojaRemitosNuevos.length:"+tmpHojaRemitosNuevos.length);
+    HojaFRemitos.getRange( proxrow,1,tmpHojaRemitosNuevos.length, 13).setValues(tmpHojaRemitosNuevos)
+    Logger.log("despues de pegar los datos en la planilla");
+    // copiaformulahastaelfinal(HojaFRemitos, (proxrow-1));
+    var mensajemail="proxrow:"+(proxrow+1)
+    enviar_Mail("marianog@donyeyo.com.ar","APP Fima Remitos Revisar Copia formula",mensajemail);
+    Logger.log("despues de copiaformulahastaelfinal");
+  } catch (e) {
+    Logger.log("Error: " + e.message);
+    enviar_Mail("marianog@donyeyo.com.ar","ERROR Sync APP Fima Remitos",e.message);
+  } finally {
+    Logger.log("Función completada.");
+  }
+
+}
+
+function enviar_Mail(destinatario,asunto, mensaje) {
+ 
+  var msj="";
+  var msj=mensaje;
+  //var asunto = "Tareas de Seguridad Informatica pendientes";
+  //var mensaje = "Adjunto envío el archivo de pedidos de supermercado para subir a Finnegans solicitado.";
+  //MailApp.sendEmail(destinatario, asunto, mensaje, {attachments: [blob]});
+  Logger.log("Destinatario:" +  destinatario);
+  Logger.log("asunto:" +  asunto);
+  Logger.log("msj:" +  msj);
+  MailApp.sendEmail( destinatario,  asunto, msj );
+  
+
+};
+
+function Proxreg(spreadsheet) {
+  Logger.log("49-Proxreg");
+  //var spreadsheet = SpreadsheetApp.getActive();
+  spreadsheet.getRange('A1').activate();
+  spreadsheet.getCurrentCell().getNextDataCell(SpreadsheetApp.Direction.DOWN).activate();
+  if (spreadsheet.getCurrentCell().getValue()!=""){
+    //si a2 es distitno de vacio , 
+    
+    var celda = spreadsheet.getCurrentCell().getA1Notation();
+    var proxcelda= "A" + (parseInt(celda.substring(1,20)) +1);
+    Logger.log (proxcelda);
+    spreadsheet.getRange(proxcelda).activate();
+    return (parseInt(proxcelda.substring(1,20)));
+  }
+  else{
+    spreadsheet.getRange('A2').activate();
+    return(2);
+  }
+  // si  no hay nada en A2 me quedo en a2
+}
+
+function copiaformulahastaelfinal(HojaFRemitos, proxrow) {
+  //var spreadsheet = SpreadsheetApp.getActive();
+  HojaFRemitos.getRange('M' + proxrow).activate();
+  var currentCell = HojaFRemitos.getCurrentCell();
+  HojaFRemitos.getSelection().getNextDataRange(SpreadsheetApp.Direction.DOWN).activate();
+  currentCell.activateAsCurrentCell();
+  HojaFRemitos.getRange('M' + proxrow).copyTo(HojaFRemitos.getActiveRange(), SpreadsheetApp.CopyPasteType.PASTE_NORMAL, false);
+};
+
+
+function bajarRemitos2(fDesde,fHasta){
+  
+  try {
+    var HojaFRemitos=Libro.getSheetByName("Hoja 18");
+    var arregloHojaFRemitos  = HojaFRemitos.getDataRange().getValues()
+    var tmpHojaRemitosNuevos=[]
+    Logger.log("antes de RetrieveAccessToken");
+    var Resp1 = RetrieveAccessToken(); 
+
+    /*var URL_Remitos_de_Ayer="https://api.teamplace.finneg.com/api/reports/AnalisisFirmaRemitosDY?ACCESS_TOKEN=" + Resp1 + "&PARAMWEBREPORT_FechaDesde=" + fDesde + "&PARAMWEBREPORT_FechaHasta=" + fHasta + "&PARAMWEBREPORT_Documento=&PARAMWEBREPORT_Cliente=&PARAMWEBREPORT_CircuitoContable=&PARAMWEBREPORT_dimension=&PARAMWEBREPORT_valor=&PARAMWEBREPORT_Producto=&PARAMWEBREPORT_Moneda=&PARAMWEBREPORT_Empresa=EMPRE01&PARAMWEBREPORT_IncluirConceptosCalculados=false&PARAMWEBREPORT_Firma=";
+    */
+    var URL_Remitos_de_Ayer="https://api.teamplace.finneg.com/api/reports/AFIRMAREMVEN_MG?ACCESS_TOKEN=" + Resp1 + "&PARAMWEBREPORT_FechaDesde=" + fDesde + "&PARAMWEBREPORT_FechaHasta=" + fHasta + "&PARAMWEBREPORT_Documento=&PARAMWEBREPORT_Cliente=&PARAMWEBREPORT_CircuitoContable=&PARAMWEBREPORT_dimension=&PARAMWEBREPORT_valor=&PARAMWEBREPORT_Producto=&PARAMWEBREPORT_Moneda=&PARAMWEBREPORT_Empresa=EMPRE01&PARAMWEBREPORT_IncluirConceptosCalculados=false&PARAMWEBREPORT_Firma=";
+    
+    Logger.log(URL_Remitos_de_Ayer);
+
+    var response =UrlFetchApp.fetch(URL_Remitos_de_Ayer);
+    var responsedata= response.getContentText();
+    var json = JSON.parse(responsedata);
+    json.forEach(Remitos_de_Ayer=>{
+      /*Logger.log("Remitos_de_Ayer.ORGANIZACION_CODIGO:"+Remitos_de_Ayer.ORGANIZACION_CODIGO);
+      */
+      tmpHojaRemitosNuevos.push([Remitos_de_Ayer.TRANSACCIONID  ,Remitos_de_Ayer.FECHA ,Remitos_de_Ayer.CLIENTE ,Remitos_de_Ayer.TOTAL ,Remitos_de_Ayer.COMPROBANTE ,Remitos_de_Ayer.DOCNROINT ,"","", Remitos_de_Ayer.DESCRIPCION,"0","",Remitos_de_Ayer.ORGANIZACION_CODIGO,Remitos_de_Ayer.CANTIDADCOPIAS])
+    })
+
+    var proxrow = Proxreg(HojaFRemitos);
+    Logger.log("proxrow:"+proxrow);
+    Logger.log("tmpHojaRemitosNuevos.length:"+tmpHojaRemitosNuevos.length);
+    HojaFRemitos.getRange( proxrow,1,tmpHojaRemitosNuevos.length, 12).setValues(tmpHojaRemitosNuevos)
+    Logger.log("despues de pegar los datos en la planilla");
+    copiaformulahastaelfinal(HojaFRemitos, (proxrow-1));
+    Logger.log("despues de copiaformulahastaelfinal");
+  } catch (e) {
+    Logger.log("Error: " + e.message);
+    enviar_Mail("marianog@donyeyo.com.ar","ERROR Sync APP Fima Remitos",e.message);
+  } finally {
+    Logger.log("Función completada.");
+  }
+
+}
+
+/* esta CONFIG solo impacta en actualizarListaClientes
+*/
+const CONFIG = {
+  CLIENT_ID: '859744933f6e25e17025da8a040b45cc',
+  CLIENT_SECRET: 'aea5d0380ec3b6596f72071a94f23c0b',
+  SPREADSHEET_ID: '15UQCdEloXQrBh0z0-s4AOpAMgicEiy0WqzHZoUsj7zA',
+  SHEET_NAME: 'Clientes'
+};
+
+/**
+ * Función principal para actualizar la lista de clientes desde Finneg ERP
+ */
+function actualizarListaClientes() {
+  try {
+    // 1. Obtener Token
+    const accessToken = getAccessToken();
+    if (!accessToken) return;
+
+    // 2. Calcular fecha de hace 4 días (YYYY-MM-DD)
+    const fourDaysAgo = new Date();
+    fourDaysAgo.setDate(fourDaysAgo.getDate() - 4);
+    const updatedSince = Utilities.formatDate(fourDaysAgo, "GMT-3", "yyyy-MM-dd");
+
+    // 3. Obtener listado de organizaciones actualizadas
+    //const listUrl = `https://api.finneg.com/api/Organizacion/list?updatedSince=${updatedSince}&ACCESS_TOKEN=${accessToken}`;
+
+    const listUrl = `https://api.finneg.com/api/reports/USR_Vista_Organizaciones_UltActualizacion?ACCESS_TOKEN=${accessToken}&FechaDesde=${updatedSince}&PARAMWEBREPORT_Empresa=`;
+
+    const listResponse = UrlFetchApp.fetch(listUrl, { muteHttpExceptions: true });
+    
+    if (listResponse.getResponseCode() !== 200) {
+      throw new Error(`Error al obtener lista: ${listResponse.getContentText()}`);
+    }
+
+    Logger.log("listResponse:"+listResponse);
+
+    const organizationsList = JSON.parse(listResponse.getContentText());
+    Logger.log(`Organizacion/list devolvió ${organizationsList.length} clientes.`);
+
+    if (organizationsList.length === 0) {
+      Logger.log("No hay clientes para actualizar.");
+      return;
+    }
+
+    // 4. Preparar la hoja de cálculo
+    const ss = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
+    const sheet = ss.getSheetByName(CONFIG.SHEET_NAME);
+    if (!sheet) {
+      throw new Error(`No se encontró la hoja "${CONFIG.SHEET_NAME}"`);
+    }
+
+    const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+    const dataRange = sheet.getDataRange();
+    const sheetData = dataRange.getValues();
+    
+    // Identificar columna de 'codigo' para búsqueda (asumimos que la API devuelve 'codigo' y hay una columna igual)
+    const codigoColIdx = headers.findIndex(h => h.toLowerCase() === 'codigo');
+    if (codigoColIdx === -1) {
+      throw new Error("No se encontró la columna 'codigo' en la hoja para realizar la búsqueda.");
+    }
+
+    Logger.log("organizationsList:"+JSON.stringify(organizationsList));
+
+    // 5. Iterar sobre cada cliente del listado
+    organizationsList.forEach(orgSummary => {
+      try {
+        const codigo = orgSummary.CODIGO;
+        if (!codigo) {
+          Logger.log("Saltando organización sin código." + codigo + ".");
+          return;
+        }
+        
+
+        // Obtener detalles del cliente
+        const detailUrl = `https://api.finneg.com/api/Cliente/${codigo}?ACCESS_TOKEN=${accessToken}`;
+        const detailResponse = UrlFetchApp.fetch(detailUrl, { muteHttpExceptions: true });
+
+        if (detailResponse.getResponseCode() !== 200) {
+          Logger.log(`Error al obtener detalles para ${codigo}: ${detailResponse.getContentText()}`);
+          return;
+        }
+
+        const clientData = JSON.parse(detailResponse.getContentText());
+        Logger.log ("Datos traidos de Finn:" + clientData);
+
+        // Solo procesar si EsCliente = 1
+        if (clientData.EsCliente !== true) {
+          Logger.log(`Organización ${codigo} ignorada: EsCliente = ${clientData.EsCliente} (no es cliente).`);
+          return;
+        }
+
+        // Buscar cliente en la hoja
+        // Buscamos en sheetData (memoria) para ir más rápido, aunque esto no considera si el cliente se agregó recién
+        let rowIndex = -1;
+        for (let i = 1; i < sheetData.length; i++) {
+          if (sheetData[i][codigoColIdx] == codigo) {
+            rowIndex = i + 1; // +1 porque i es 0-based y el row de la hoja es 1-based
+            break;
+          }
+        }
+
+        
+
+        if (rowIndex !== -1) {
+          // Actualizar datos donde los campos coincidan con los encabezados
+          headers.forEach(( header, colIdx) => {
+            if (clientData.hasOwnProperty(header)) {
+              let value = clientData[header];
+              // Convertir booleanos a 1/0
+              if (typeof value === 'boolean') {
+                value = value ? 1 : 0;
+              }
+              sheet.getRange(rowIndex, colIdx + 1).setValue(value);
+            }
+          });
+          Logger.log(`Cliente ${codigo} actualizado.`);
+        } else {
+          Logger.log(`Cliente ${codigo} no encontrado en la hoja. Se procede a crear uno nuevo al final.`);
+          // Opcional: Agregar si no existe
+          const newRow = headers.map(header => {
+            let value = clientData[header] || "";
+            if (typeof value === 'boolean') {
+              value = value ? 1 : 0;
+            }
+            return value;
+          });
+          Logger.log ("newRow agregado a la planilla:" + newRow);
+          sheet.appendRow(newRow);
+        }
+
+      } catch (err) {
+        ReportarError(`Error procesando cliente ${orgSummary.CODIGO || 'desconocido'}: ${err.message}`);
+      }
+    });
+
+  } catch (error) {
+    ReportarError(`Error general en actualizarListaClientes: ${error.message}`);
+  }
+}
+
+/**
+ * Obtiene el token de acceso desde la API de Finneg
+ */
+function getAccessToken() {
+  //const url = "https://api.teamplace.finneg.com/api/oauth/token?grant_type=client_credentials&client_id=4acb0ebef25a18112d0e0bcf4c6a73df&client_secret=11ec17f2853b2d22bf75a9501c095da6";
+  const url = `https://api.teamplace.finneg.com/api/oauth/token?grant_type=client_credentials&client_id=${CONFIG.CLIENT_ID}&client_secret=${CONFIG.CLIENT_SECRET}`;
+  
+  try {
+    const response = UrlFetchApp.fetch(url, { method: 'get', muteHttpExceptions: true });
+    //var response = UrlFetchApp.fetch(apiEndpoint);
+    if (response.getResponseCode() !== 200) {
+      throw new Error(`Error de autenticación: ${response.getContentText()}`);
+    }
+    //const data = JSON.parse(response.getContentText());
+    //return data.access_token;
+    return response;
+  } catch (e) {
+    ReportarError(`Falla al obtener token: ${e.message}`);
+    return null;
+  }
+}
+
+/**
+ * Función para reportar errores en el log y llevar un registro
+ * @param {string} mensaje 
+ */
+function ReportarError(mensaje) {
+  Logger.log(`!!! ERROR: ${mensaje}`);
+  enviar_Mail("marianog@donyeyo.com.ar" ,"Error Sincronizacion Ogranizaciones",`!!! ERROR: ${mensaje}`);
+  // Aquí se puede agregar lógica para escribir en una hoja de errores adicional
+}

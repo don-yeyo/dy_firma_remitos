@@ -321,15 +321,15 @@ class DocumentProcessor:
             with connection.cursor() as cursor:
                 # Buscar el registro coincidente recuperando las columnas de ejemplares y copias
                 select_sql = """
-                    SELECT id, fine_Copias, ocr_original, ocr_duplicado, ocr_triplicado, ocr_cuatriplcado, fine_transaccionID
+                    SELECT id, finne_Copias, ocr_original, ocr_duplicado, ocr_triplicado, ocr_cuatriplcado, finne_transaccionID
                     FROM remitos 
-                    WHERE fine_transaccionID = %s
+                    WHERE finne_transaccionID = %s
                 """
                 cursor.execute(select_sql, (transaccion_id,))
                 row = cursor.fetchone()
                 
                 if not row:
-                    err_msg = f"No se encontró ningún registro en la base de datos con fine_transaccionID = {transaccion_id}"
+                    err_msg = f"No se encontró ningún registro en la base de datos con finne_transaccionID = {transaccion_id}"
                     self._log_db_status(err_msg, "ERROR")
                     print(f"  ❌ [BD]: {err_msg}")
                     return {
@@ -360,7 +360,7 @@ class DocumentProcessor:
                 triplicado_doc = ocr_data if campo_db == "ocr_triplicado" else row.get("ocr_triplicado")
                 cuatriplicado_doc = ocr_data if campo_db == "ocr_cuatriplcado" else row.get("ocr_cuatriplcado")
 
-                copias = row.get("fine_Copias")
+                copias = row.get("finne_Copias")
                 if copias is None:
                     copias = 2  # Por defecto
                     
