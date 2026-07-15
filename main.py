@@ -18,7 +18,12 @@ def print_menu():
     print(" 4. Iniciar Escaneo Masivo (Paso 1 - Bandeja/ADF)")
     
     # Mostrar el proveedor de IA configurado de forma dinámica
-    provider_str = "Gemini" if config.AI_PROVIDER == "gemini" else f"VLM Local ({config.VLM_MODEL})"
+    if config.AI_PROVIDER == "gemini":
+        provider_str = "Gemini"
+    elif config.AI_PROVIDER == "powerautomate":
+        provider_str = "Power Automate"
+    else:
+        provider_str = f"VLM Local ({config.VLM_MODEL})"
     print(f" 5. Procesar Imágenes Escaneadas (Paso 2 - {provider_str})")
     
     print(" 6. Mostrar Configuración Actual (.env)")
@@ -201,7 +206,12 @@ def main():
                 print("Verifique que el dispositivo esté encendido, conectado a la red y el driver WIA esté configurado.")
                 
         elif choice == "5":
-            provider_str = "GEMINI AI" if config.AI_PROVIDER == "gemini" else f"VLM LOCAL ({config.VLM_MODEL})"
+            if config.AI_PROVIDER == "gemini":
+                provider_str = "GEMINI AI"
+            elif config.AI_PROVIDER == "powerautomate":
+                provider_str = "POWER AUTOMATE"
+            else:
+                provider_str = f"VLM LOCAL ({config.VLM_MODEL})"
             print("\n" + "-" * 50)
             print(f" EJECUTANDO PASO 2: PROCESAMIENTO DE IMÁGENES ({provider_str})")
             print("-" * 50)

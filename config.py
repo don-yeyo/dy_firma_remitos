@@ -12,12 +12,24 @@ SCAN_COLOR_MODE = int(os.getenv("SCAN_COLOR_MODE", "1"))  # 1 = Color, 2 = Grays
 SCAN_FORMAT = os.getenv("SCAN_FORMAT", "JPG").upper()
 SCAN_SOURCE = os.getenv("SCAN_SOURCE", "ADF").upper()  # ADF o FLATBED
 
-# Proveedor de IA (gemini o local_vlm) y configuraciones
+# Proveedor de IA (gemini, local o powerautomate) y configuraciones
 AI_PROVIDER = os.getenv("AI_PROVIDER", "gemini").lower()
+if AI_PROVIDER == "local":
+    AI_PROVIDER = "local_vlm"
+
 VLM_API_URL = os.getenv("VLM_API_URL", "http://localhost:11434/v1")
 VLM_API_KEY = os.getenv("VLM_API_KEY", "ollama")
 VLM_MODEL = os.getenv("VLM_MODEL", "qwen2.5vl:7b")
 VLM_NUM_CTX = int(os.getenv("VLM_NUM_CTX", "16384"))
+
+POWERAUTOMATE_URL = os.getenv("POWERAUTOMATE_URL", "")
+SHAREPOINT_FQDN = os.getenv("SHAREPOINT_FQDN", "")
+
+DB_HOST = os.getenv("DB_HOST", "dydb2-instance-1.cz8kik28igwg.us-east-1.rds.amazonaws.com")
+DB_PORT = int(os.getenv("DB_PORT", "3306"))
+DB_NAME = os.getenv("DB_NAME", "Firma_de_remitos")
+DB_USER = os.getenv("DB_USER", "DBAdmin_Firma_de_Remitos")
+DB_PASSWORD = os.getenv("DB_PASSWORD", "37@Firmadoss32")
 
 
 # WIA GUIDs de Formatos de Imagen comunes
@@ -52,6 +64,15 @@ def print_config():
         print(f"API URL VLM Local:   {VLM_API_URL}")
         print(f"Modelo VLM Local:    {VLM_MODEL}")
         print(f"Contexto (num_ctx):  {VLM_NUM_CTX} tokens")
+    elif AI_PROVIDER == "powerautomate":
+        print(f"Power Automate URL:  {POWERAUTOMATE_URL}")
+        print(f"SharePoint FQDN:     {SHAREPOINT_FQDN}")
+    print("-" * 50)
+    print(" CONFIGURACIÓN DE BASE DE DATOS ")
+    print(f"Host MySQL:          {DB_HOST}")
+    print(f"Puerto:              {DB_PORT}")
+    print(f"Base de Datos:       {DB_NAME}")
+    print(f"Usuario:             {DB_USER}")
     print("=" * 50)
 
 

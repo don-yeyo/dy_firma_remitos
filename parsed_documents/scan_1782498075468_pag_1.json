@@ -1,34 +1,42 @@
 {
     "original_filename": "scan_1782498075468_pag_1.jpg",
-    "timestamp": "2026-07-06 15:44:44",
+    "timestamp": "2026-07-13 16:20:16",
+    "estado_documento": "exito",
+    "confianza": 0.95,
     "extracted_text": {
+        "transaccion_id": "1766214",
         "numero_remito": "R-0005-00473008",
         "fecha": "30/05/2026",
         "tipo": "DUPLICADO",
         "cliente_cod": "17319",
         "cliente_desc": "LA GALLEGA SUPERMERCADOS SA",
-        "cbte_relacionado": "A-00006-00403703",
-        "firmas": [
-            {
-                "emision": "persona",
-                "complejidad": "media",
-                "posicion_x": "derecha",
-                "posicion_y": "medio"
-            }
-        ],
-        "sellos": [
-            {
-                "emision": "comercio",
-                "complejidad": "alta",
-                "posicion_x": "medio",
-                "posicion_y": "medio"
-            },
-            {
-                "emision": "persona",
-                "complejidad": "baja",
-                "posicion_x": "derecha",
-                "posicion_y": "medio"
-            }
-        ]
-    }
+        "cbte_relacionado": "A-00006-00403703"
+    },
+    "firmado": true,
+    "cantidad_firmas": 1,
+    "firmas": [
+        {
+            "emision": "persona",
+            "complejidad": "media",
+            "posicion_x": "derecha",
+            "posicion_y": "medio"
+        }
+    ],
+    "sellado": true,
+    "cantidad_sellos": 2,
+    "sellos": [
+        {
+            "emision": "comercio",
+            "complejidad": "alta",
+            "posicion_x": "medio",
+            "posicion_y": "medio"
+        },
+        {
+            "emision": "persona",
+            "complejidad": "baja",
+            "posicion_x": "derecha",
+            "posicion_y": "medio"
+        }
+    ],
+    "archivo": "https://donyeyosa416.sharepoint.com/:i:/r/sites/Administracin/Documentos%20compartidos/Remitos/Escaneos/scan_1782498075468_pag_1.jpg"
 }
