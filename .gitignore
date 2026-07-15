@@ -2,6 +2,7 @@
 .venv/
 venv/
 ENV/
+env/
 
 # Caché de Python
 __pycache__/
@@ -9,11 +10,12 @@ __pycache__/
 *.pyo
 *.pyd
 
-# Variables de entorno
+# Variables de entorno locales
 .env
 .env.local
+.env.*.local
 
-# Salidas de escaneo y temporales
+# Salidas de escaneo y temporales (se crean automáticamente al ejecutar)
 scanned_documents/
 tmp/
 *.jpg
@@ -21,6 +23,29 @@ tmp/
 *.png
 *.pdf
 
-# Modelos descargados
+# Carpeta de salida de documentos procesados/extraídos
+parsed_documents/
+
+# Controladores y ejecutables locales pesados (>150MB)
+drivers_win/
+
+# Modelos descargados locales
 models/
 *.tflite
+
+# Archivos temporales o de documentación redundantes en formato binario
+docs/*.docx
+
+# Configuración de editores e IDEs comunes
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.swp
+
+# Archivos del sistema operativo
+Thumbs.db
+Desktop.ini
+.DS_Store

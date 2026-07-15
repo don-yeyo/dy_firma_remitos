@@ -1,25 +1,47 @@
-# Automatización de Recepción y Procesamiento de Documentos
+# Automatización de Recepción y Firma de Remitos - Don Yeyo
 
-Este proyecto permite realizar el escaneo masivo de documentos en papel utilizando el alimentador automático (ADF) de una impresora multifunción mapeada en la red LAN (por ejemplo, **RICOH IM C300**) y, posteriormente, procesar las imágenes resultantes mediante reconocimiento visual usando **MediaPipe** y **OpenCV**.
+Este proyecto es una solución integral diseñada para agilizar y digitalizar el proceso de **control y auditoría de remitos firmados** en **Don Yeyo**. 
 
-El flujo consta de dos pasos principales:
-1. **Paso 1 (Escaneo)**: Comunicación con el driver WIA del escáner en red para disparar la bandeja de alimentación y guardar las páginas como archivos de imagen (JPEG/PNG) parametrizables.
-2. **Paso 2 (Reconocimiento)**: Análisis de los documentos usando MediaPipe para identificar regiones de interés u objetos dentro de las imágenes escaneadas.
+La aplicación permite realizar el escaneo masivo de remitos en papel utilizando el alimentador automático de hojas (ADF) de la impresora multifunción de la red local (ej. **RICOH IM C300**) y, posteriormente, procesar de manera automática las imágenes resultantes mediante Inteligencia Artificial (IA) y visión artificial (**MediaPipe**, **OpenCV**, o **VLMs** locales/nube) para detectar si los remitos han sido debidamente conformados (firmados y fechados).
+
+---
+
+## ¿Cómo ayuda a agilizar procesos en Don Yeyo?
+
+El flujo de control de remitos tradicional requiere la revisión visual manual de cada hoja firmada por el cliente antes de ser archivada. Este proyecto automatiza este cuello de botella operativo introduciendo las siguientes mejoras:
+
+*   **Auditoría Veloz y Masiva**: El operador coloca el fajo de remitos en la bandeja ADF del escáner Ricoh y el sistema los procesa consecutivamente sin intervención manual adicional.
+*   **Detección Automatizada de Firmas**: En segundos, el sistema analiza cada imagen y determina automáticamente si el remito está firmado, reduciendo el error humano y la fatiga en la revisión.
+*   **Integración con Sistemas de Información**: Los remitos escaneados y los resultados analizados por IA se suben de forma estructurada a **SharePoint**, se registran en una base de datos centralizada **MySQL (en AWS)** y se genera un reporte log en **CSV** para control del sector administrativo.
+*   **Optimización del Espacio**: Permite deshacerse o archivar pasivamente el papel físico sabiendo que los documentos digitalizados y su validación constan en registros digitales seguros y fáciles de buscar.
+
+---
+
+## Ventajas Clave
+
+1. **Resiliencia Operativa**: Si la bandeja ADF física del escáner se atasca o falla en red, el programa reintenta la conexión de forma autónoma hasta 3 veces y ofrece redirección rápida al panel plano (Flatbed).
+2. **IA Híbrida y Flexible**: El motor de reconocimiento puede configurarse para usar modelos en la nube (como **Google Gemini**) para máxima precisión, o modelos locales offline (como **Ollama con Qwen2.5-VL**) para mayor privacidad y evitar costos de internet.
+3. **Control Total del Dispositivo**: Permite cambiar la resolución (DPI), origen del papel (ADF/Plana) y el formato (JPG/PNG) de los archivos finales directamente desde el archivo `.env`.
+4. **Instalación Integrada**: Cuenta con un menú interactivo que simplifica la instalación del motor OCR y los controladores de red necesarios en cualquier PC de la oficina.
 
 ---
 
 ## Estructura del Proyecto
 
 ```text
-dy_automatizacion_recepcion_docs/
-├── .env                  # Variables de entorno locales (DPI, formato, etc. - No subir al repositorio)
-├── .env.template         # Plantilla de variables de entorno de ejemplo
-├── .gitignore            # Omitir archivos temporales y la configuración local
-├── config.py             # Carga centralizada y tipada de variables de configuración
-├── scanner.py            # Módulo de integración WIA para listado de dispositivos y escaneo masivo
-├── recognition.py        # Módulo de reconocimiento de imágenes usando OpenCV y MediaPipe
-├── main.py               # Interfaz de consola CLI interactiva para el usuario
-└── requirements.txt      # Dependencias del proyecto
+dy_firma_remitos/
+├── .env                  # Configuración local de base de datos, APIs y escaneo (no se sube a Git)
+├── .env.template         # Plantilla base para recrear el entorno en otra PC
+├── .gitignore            # Exclusiones optimizadas para mantener el repositorio liviano
+├── config.py             # Módulo central de carga de variables de configuración
+├── scanner.py            # Módulo de integración WIA para control físico del escáner Ricoh
+├── recognition.py        # Módulo de visión artificial y reconocimiento de firmas (OpenCV/IA)
+├── main.py               # Menú interactivo CLI para el usuario final en la administración
+├── requirements.txt      # Librerías de Python requeridas
+├── driver_manager.py     # Administrador para instalar controladores automáticamente desde el menú
+├── docs/                 # Documentación del proyecto (guías de configuración de modelos VLMs)
+├── drivers_win/          # Controladores oficiales Network WIA y Tesseract OCR (locales)
+└── models/               # Modelos locales de visión artificial (.tflite)
 ```
 
 ---
