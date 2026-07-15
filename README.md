@@ -138,10 +138,14 @@ Dispara la bandeja de alimentación automática (ADF) de la multifunción. Escan
 - Si persiste el error, ofrece un menú interactivo para: reintentar, cambiar a **modo Flatbed (vidrio)** o abortar.
 
 ### 5. Procesar Imágenes Escaneadas (Paso 2 - IA)
-Analiza las imágenes de la carpeta de escaneo usando un modelo de lenguaje visual (VLM) o un flujo de automatización. Soporta tres proveedores:
-- **Gemini AI** (nube): Requiere `GEMINI_API_KEY` en `.env`.
-- **Ollama Local** / **VLM Local**: Requiere Ollama o vLLM corriendo con el modelo configurado en `VLM_MODEL`.
-- **Power Automate**: Convierte la imagen a Base64 y la envía al flujo configurado en `POWERAUTOMATE_URL`. Parsea e integra los resultados y genera el link del archivo en SharePoint formateando el path con `SHAREPOINT_FQDN`.
+Analiza las imágenes de la carpeta de escaneo usando un modelo de lenguaje visual (VLM) o un flujo de automatización en la nube. Soporta tres proveedores de inteligencia:
+- **Gemini AI** (nube): Requiere `GEMINI_API_KEY` en `.env`. Utiliza los modelos de lenguaje multimodal de Google en la nube.
+- **Ollama Local** / **VLM Local**: Requiere Ollama o vLLM corriendo localmente con el modelo de visión configurado en `VLM_MODEL`.
+- **Power Automate Nube + AI Builder (Recomendado Corporativo)**:
+  * Convierte la imagen escaneada local a formato **Base64** y la transmite mediante una petición HTTP POST a un flujo de Power Automate en la nube (`POWERAUTOMATE_URL`).
+  * El flujo de Power Automate utiliza **Microsoft AI Builder** como cerebro de visión artificial para analizar el documento y extraer la confirmación de la firma de manera estructurada.
+  * El flujo retorna los resultados y guarda el remito en el servidor de SharePoint.
+  * El script de Python recibe el resultado, decodifica el path de SharePoint y, utilizando la variable `SHAREPOINT_FQDN`, genera y formatea de forma automática la **URL directa y pública al remito archivado en SharePoint** (preservando los espacios y caracteres especiales de la ruta).
 
 ### 6. Mostrar Configuración Actual (.env)
 Imprime en pantalla los parámetros con los que está operando el sistema actualmente (DPI, Color, Formato, etc.).
@@ -166,6 +170,50 @@ Submenú para iniciar, detener, verificar estado del servidor Ollama y liberar m
 | `GEMINI_API_KEY` | Clave API de Google Gemini | `AIza...` |
 | `POWERAUTOMATE_URL` | URL del flujo de Power Automate a invocar | `https://.../workflows/...` |
 | `SHAREPOINT_FQDN` | FQDN del SharePoint para formatear la ruta del archivo | `https://donyeyosa416.sharepoint.com/:i:/r/sites/Administracin` |
+| `DB_HOST` | Servidor MySQL en la nube (AWS RDS) | `dydb2-instance-1...rds.amazonaws.com` |
+| `DB_NAME` | Nombre de la base de datos MySQL | `Firma_de_remitos` |
+| `DB_USER` | Usuario de conexión de base de datos | `DBAdmin_Firma_de_Remitos` |
+| `DB_PASSWORD` | Contraseña del usuario de base de datos | `********` |
+| `FINNEGANS_CLIENT_ID` | Identificador de cliente para la API de Finnegans | `859744933f6e25e1...` |
+| `FINNEGANS_CLIENT_SECRET` | Clave secreta para la API de Finnegans | `aea5d0380ec3b659...` |
+| `FINNEGANS_EMPRESA_COD` | Código de empresa dentro de Finnegans | `EMPRE01` |
+| `FINNEGANS_HTTP_TIMEOUT` | Tiempo de espera límite para respuestas de reportes en Finnegans | `90` |
+| `SYNC_DAYS_BACK` | Ventana de días hacia atrás a sincronizar en ejecuciones automáticas | `7` |
+
+---
+
+## Sincronización Automática (Tarea Programada de Windows)
+
+El proyecto incluye una integración automatizada para extraer remitos directamente del ERP de Finnegans e insertarlos en la base de datos de auditoría de remitos de Don Yeyo de forma periódica.
+
+### Ejecución Manual o bajo Demanda
+Puedes lanzar la sincronización de forma manual desde la terminal con las dependencias cargadas en tu entorno virtual:
+```powershell
+# Ejecución automática (busca la ventana de días configurada en SYNC_DAYS_BACK)
+uv run python sync_remitos.py
+
+# Reprocesamiento manual con rango de fechas específico (YYYY-MM-DD)
+uv run python sync_remitos.py --desde 2026-07-01 --hasta 2026-07-15
+```
+
+### Configuración del Cron / Tarea Programada en Windows
+
+Para que el proceso se ejecute de manera desatendida y automática de fondo (por ejemplo, cada hora o todas las mañanas):
+
+1. **El archivo ejecutable (.bat)**: El proyecto cuenta con [sync_remitos.bat](file:///c:/Users/gabrielt/Documents/Proyectos/Automatizaci%C3%B3nFirmaRemitos/dy_firma_remitos/sync_remitos.bat) en el directorio raíz. Este archivo se encarga de posicionarse en la carpeta correcta, detectar el entorno virtual Python `.venv` y lanzar el script sin necesidad de intervención visual.
+2. **Programador de Tareas de Windows**:
+   * Abre el **Programador de Tareas** (`taskschd.msc`) desde el menú de inicio de Windows.
+   * Haz clic en **Crear Tarea Básica...** en el panel de acciones.
+   * Dale un nombre (ej. `Sincronizador Remitos Don Yeyo`) y descripción.
+   * Selecciona el desencadenador (ej. **Diariamente** o **Al iniciar el equipo**).
+   * En la acción, selecciona **Iniciar un programa**.
+   * En el campo **Programa o script**, ingresa la ruta completa a tu archivo `.bat`, por ejemplo:
+     `C:\Users\gabrielt\Documents\Proyectos\AutomatizaciónFirmaRemitos\dy_firma_remitos\sync_remitos.bat`
+   * **IMPORTANTE**: En el campo **Iniciar en (opcional)**, ingresa la ruta absoluta de la carpeta del proyecto:
+     `C:\Users\gabrielt\Documents\Proyectos\AutomatizaciónFirmaRemitos\dy_firma_remitos`
+   * Haz clic en finalizar.
+
+Los logs de sincronización se guardarán en la carpeta `logs/sync_remitos.log` de forma local para control administrativo.
 
 ---
 
