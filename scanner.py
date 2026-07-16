@@ -388,6 +388,12 @@ def trigger_scan():
         print("\nIniciando secuencia de escaneo masivo...")
         
         while True:
+            if page_num > 1:
+                # Darle tiempo al alimentador (ADF) físico de la Ricoh para terminar de acomodar
+                # la siguiente hoja antes de volver a solicitar la transferencia de red.
+                print(f"  Esperando {config.SCAN_ADF_DELAY}s para la transición de página...")
+                time.sleep(config.SCAN_ADF_DELAY)
+                
             # Se elimina la comprobación anticipada del sensor físico (has_paper_in_feeder),
             # ya que muchos controladores WIA de red (incluyendo el de Ricoh) reportan valores imprecisos
             # para la propiedad 3087, arrojando falsos negativos. Dejamos que el primer intento de Transfer()
@@ -423,7 +429,10 @@ def trigger_scan():
                     is_efail = "2147467259" in err_str or "e_fail" in err_str or "no especificado" in err_str
                     
                     if is_efail and attempt < max_retries:
-                        print(f"  [WARN] Intento {attempt}/{max_retries} falló (E_FAIL). Reconectando al escáner...")
+                        if page_num == 1:
+                            print(f"  [WARN] Intento {attempt}/{max_retries} falló (E_FAIL). Reconectando al escáner...")
+                        else:
+                            print(f"  Verificando si restan hojas en el alimentador (Intento {attempt}/{max_retries})...")
                         time.sleep(2)
                         try:
                             scanner = connect_scanner()
@@ -452,6 +461,9 @@ def trigger_scan():
                 if os.path.exists(temp_path): os.remove(temp_path)
                 image.SaveFile(temp_path)
                 
+                # Pausa breve para asegurar que el sistema operativo libere el descriptor de escritura del archivo
+                time.sleep(config.SCAN_FILE_WRITE_DELAY)
+                
                 import cv2
                 img_data = cv2.imread(temp_path)
                 if img_data is not None:
@@ -459,10 +471,18 @@ def trigger_scan():
                     print(f"  Página {page_num} procesada y guardada en: {filepath}")
                     scanned_files.append(abspath)
                 else:
-                    import shutil
-                    shutil.copy(temp_path, abspath)
-                    print(f"  Página {page_num} guardada directamente en: {filepath} (cv2 fallback)")
-                    scanned_files.append(abspath)
+                    try:
+                        # Fallback con PIL para decodificar y convertir el BMP a JPEG real en lugar de copiarlo crudo
+                        from PIL import Image
+                        with Image.open(temp_path) as img:
+                            img.convert("RGB").save(abspath, "JPEG")
+                        print(f"  Página {page_num} convertida y guardada en: {filepath} (PIL fallback)")
+                        scanned_files.append(abspath)
+                    except Exception as pil_err:
+                        import shutil
+                        shutil.copy(temp_path, abspath)
+                        print(f"  Página {page_num} guardada directamente en: {filepath} (shutil fallback): {pil_err}")
+                        scanned_files.append(abspath)
                 
                 if os.path.exists(temp_path): os.remove(temp_path)
                 page_num += 1

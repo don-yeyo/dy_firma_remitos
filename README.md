@@ -158,13 +158,18 @@ Analiza las imágenes de la carpeta de escaneo usando un modelo de lenguaje visu
   * El flujo retorna los resultados y guarda el remito en el servidor de SharePoint.
   * El script de Python recibe el resultado, decodifica el path de SharePoint y, utilizando la variable `SHAREPOINT_FQDN`, genera y formatea de forma automática la **URL directa y pública al remito archivado en SharePoint** (preservando los espacios y caracteres especiales de la ruta).
 
-### 6. Sincronizar Remitos desde Finnegans (ERP)
+### 6. Escanear + Procesar Todo (Flujo Completo)
+Esta opción automatiza de punta a punta todo el proceso de digitalización y auditoría:
+1. Dispara el **Paso 1 (Escaneo Masivo)** para jalar las hojas de la bandeja superior de la Ricoh.
+2. Si el escaneo finalizó con éxito y se generaron imágenes en la carpeta local, inicia de forma automática y secuencial el **Paso 2 (Procesamiento por IA)**, analizando las firmas y sellos y actualizando la base de datos de AWS y SharePoint sin requerir intervención o clics adicionales por parte del operador.
+
+### 7. Sincronizar Remitos desde Finnegans (ERP)
 Ejecuta de manera inmediata la lógica de sincronización del script `sync_remitos.py` desde el menú principal. Conecta a la API de Finnegans, descarga el reporte `AFIRMAREMVEN_MG` y actualiza/inserta los remitos correspondientes en la base de datos de AWS MySQL, informando del progreso paso a paso por consola.
 
-### 7. Mostrar Configuración Actual (.env)
+### 8. Mostrar Configuración Actual (.env)
 Imprime en pantalla los parámetros con los que está operando el sistema actualmente (DPI, Color, Formato, etc.).
 
-### 8. Gestionar Servicio Ollama (VLM Local)
+### 9. Gestionar Servicio Ollama (VLM Local)
 Submenú para iniciar, detener, verificar estado del servidor Ollama y liberar memoria RAM/VRAM.
 
 ---
@@ -179,6 +184,8 @@ Submenú para iniciar, detener, verificar estado del servidor Ollama y liberar m
 | `SCAN_COLOR_MODE` | Formato de color | `1` (Color), `2` (Grises), `4` (B&N) |
 | `SCAN_FORMAT` | Formato de archivo de imagen | `JPG`, `PNG`, `TIFF` |
 | `SCAN_SOURCE` | Alimentador automático o cama plana | `ADF` o `FLATBED` |
+| `SCAN_ADF_DELAY` | Tiempo de espera entre páginas en el alimentador (segundos) | `2.5` |
+| `SCAN_FILE_WRITE_DELAY` | Tiempo de espera para liberar descriptor del archivo (segundos) | `0.5` |
 | `AI_PROVIDER` | Proveedor de IA o servicio para procesamiento | `gemini`, `local` o `powerautomate` |
 | `VLM_MODEL` | Modelo de VLM local para Ollama | `qwen2.5vl:7b` |
 | `GEMINI_API_KEY` | Clave API de Google Gemini | `AIza...` |

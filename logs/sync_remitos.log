@@ -37,3 +37,34 @@
 2026-07-15 13:55:54,643 [INFO]   - Omitidos/Ignorados: 0
 2026-07-15 13:55:54,648 [INFO] Proceso completado exitosamente.
 
+2026-07-16 09:42:08,713 [INFO] ======================================================================
+2026-07-16 09:42:08,713 [INFO] INICIANDO PROCESO DE SINCRONIZACIÓN DE REMITOS DESDE FINNEGANS
+2026-07-16 09:42:08,713 [INFO] ======================================================================
+2026-07-16 09:42:08,713 [INFO] Rango de búsqueda calculado: Desde 2026-07-09 hasta 2026-07-16
+2026-07-16 09:42:09,338 [INFO] Token de acceso de Finnegans obtenido con éxito.
+2026-07-16 09:42:09,340 [INFO] Consultando remitos en Finnegans desde 2026-07-09 hasta 2026-07-16 (Reporte: AFIRMAREMVEN_MG)...
+2026-07-16 09:42:15,129 [INFO] Se recuperaron 1259 registros de remitos desde Finnegans.
+2026-07-16 09:42:15,129 [INFO] Conectándose a la base de datos MySQL en dydb2-instance-1.cz8kik28igwg.us-east-1.rds.amazonaws.com...
+2026-07-16 09:42:16,303 [INFO] ✔ Conexión establecida con éxito con la base de datos MySQL.
+2026-07-16 09:42:16,303 [INFO] Consultando remitos preexistentes en la base de datos...
+2026-07-16 09:42:16,489 [INFO] Se encontraron 1203 remitos ya registrados localmente en este rango de fechas.
+2026-07-16 09:42:16,490 [INFO] Iniciando procesamiento de los 1259 remitos de Finnegans...
+2026-07-16 09:42:33,343 [INFO]  -> Progreso: 100/1259 remitos procesados. (Nuevos: 3, Actualizados: 97)
+2026-07-16 09:42:50,093 [INFO]  -> Progreso: 200/1259 remitos procesados. (Nuevos: 3, Actualizados: 197)
+2026-07-16 09:43:06,813 [INFO]  -> Progreso: 300/1259 remitos procesados. (Nuevos: 12, Actualizados: 288)
+2026-07-16 09:43:23,484 [INFO]  -> Progreso: 400/1259 remitos procesados. (Nuevos: 37, Actualizados: 363)
+2026-07-16 09:43:40,201 [INFO]  -> Progreso: 500/1259 remitos procesados. (Nuevos: 50, Actualizados: 450)
+2026-07-16 09:43:56,909 [INFO]  -> Progreso: 600/1259 remitos procesados. (Nuevos: 50, Actualizados: 550)
+2026-07-16 09:44:13,732 [INFO]  -> Progreso: 700/1259 remitos procesados. (Nuevos: 127, Actualizados: 573)
+2026-07-16 09:44:30,720 [INFO]  -> Progreso: 800/1259 remitos procesados. (Nuevos: 127, Actualizados: 673)
+2026-07-16 09:44:47,564 [INFO]  -> Progreso: 900/1259 remitos procesados. (Nuevos: 127, Actualizados: 773)
+2026-07-16 09:45:04,426 [INFO]  -> Progreso: 1000/1259 remitos procesados. (Nuevos: 127, Actualizados: 873)
+2026-07-16 09:45:21,213 [INFO]  -> Progreso: 1100/1259 remitos procesados. (Nuevos: 127, Actualizados: 973)
+2026-07-16 09:45:38,108 [INFO]  -> Progreso: 1200/1259 remitos procesados. (Nuevos: 127, Actualizados: 1073)
+2026-07-16 09:45:48,084 [INFO]  -> Progreso: 1259/1259 remitos procesados. (Nuevos: 127, Actualizados: 1132)
+2026-07-16 09:45:48,084 [INFO] Sincronización finalizada con éxito. Resumen:
+2026-07-16 09:45:48,084 [INFO]   - Nuevos insertados: 127
+2026-07-16 09:45:48,084 [INFO]   - Existentes actualizados: 1132
+2026-07-16 09:45:48,084 [INFO]   - Omitidos/Ignorados: 0
+2026-07-16 09:45:48,095 [INFO] Proceso completado exitosamente.
+

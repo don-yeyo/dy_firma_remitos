@@ -12,6 +12,10 @@ SCAN_COLOR_MODE = int(os.getenv("SCAN_COLOR_MODE", "1"))  # 1 = Color, 2 = Grays
 SCAN_FORMAT = os.getenv("SCAN_FORMAT", "JPG").upper()
 SCAN_SOURCE = os.getenv("SCAN_SOURCE", "ADF").upper()  # ADF o FLATBED
 
+# Tiempos de espera (delays) para sincronización con el hardware y sistema operativo
+SCAN_ADF_DELAY = float(os.getenv("SCAN_ADF_DELAY", "2.5"))
+SCAN_FILE_WRITE_DELAY = float(os.getenv("SCAN_FILE_WRITE_DELAY", "0.5"))
+
 # Proveedor de IA (gemini, local o powerautomate) y configuraciones
 AI_PROVIDER = os.getenv("AI_PROVIDER", "gemini").lower()
 if AI_PROVIDER == "local":
@@ -58,6 +62,7 @@ def print_config():
     print(f"Modo de color:       {SCAN_COLOR_MODE} (1=Color, 2=Grayscale, 4=B&W)")
     print(f"Formato de imagen:   {SCAN_FORMAT} ({WIA_IMAGE_FORMAT_GUID})")
     print(f"Origen del papel:    {SCAN_SOURCE}")
+    print(f"Delays de hardware:  ADF={SCAN_ADF_DELAY}s, Escritura={SCAN_FILE_WRITE_DELAY}s")
     print("-" * 50)
     print(f"Proveedor de IA:     {AI_PROVIDER.upper()}")
     if AI_PROVIDER == "local_vlm":

@@ -26,10 +26,11 @@ def print_menu():
         provider_str = f"VLM Local ({config.VLM_MODEL})"
     print(f" 5. Procesar Imágenes Escaneadas (Paso 2 - {provider_str})")
     
-    print(" 6. Sincronizar Remitos desde Finnegans (ERP)")
-    print(" 7. Mostrar Configuración Actual (.env)")
-    print(" 8. Gestionar Servicio Ollama (VLM Local)")
-    print(" 9. Salir")
+    print(" 6. Escanear + Procesar Todo (Flujo Completo)")
+    print(" 7. Sincronizar Remitos desde Finnegans (ERP)")
+    print(" 8. Mostrar Configuración Actual (.env)")
+    print(" 9. Gestionar Servicio Ollama (VLM Local)")
+    print(" 10. Salir")
     print("=" * 50)
 
 def manage_ollama():
@@ -229,6 +230,37 @@ def main():
                 
         elif choice == "6":
             print("\n" + "-" * 50)
+            print(" EJECUTANDO FLUJO COMPLETO: ESCANEO + PROCESAMIENTO MASIVO")
+            print("-" * 50)
+            
+            # Paso 1: Escaneo
+            scanned_files = scanner.trigger_scan()
+            
+            if scanned_files:
+                print(f"\n[OK] Paso 1 finalizado: Se escanearon {len(scanned_files)} páginas con éxito.")
+                print(f"Iniciando Paso 2: Procesamiento automático de las imágenes...")
+                
+                # Paso 2: Procesamiento de imágenes
+                if config.AI_PROVIDER == "gemini":
+                    provider_str = "GEMINI AI"
+                elif config.AI_PROVIDER == "powerautomate":
+                    provider_str = "POWER AUTOMATE"
+                else:
+                    provider_str = f"VLM LOCAL ({config.VLM_MODEL})"
+                
+                print("\n" + "-" * 50)
+                print(f" EJECUTANDO PASO 2: PROCESAMIENTO DE IMÁGENES ({provider_str})")
+                print("-" * 50)
+                try:
+                    processor = recognition.DocumentProcessor()
+                    processor.process_all_scans()
+                except Exception as e:
+                    print(f"Error durante el reconocimiento de imágenes: {e}")
+            else:
+                print("\n[!] El escaneo no generó archivos. Se cancela el procesamiento automático.")
+                
+        elif choice == "7":
+            print("\n" + "-" * 50)
             print(" EJECUTANDO SINCRONIZACIÓN DE REMITOS DESDE FINNEGANS")
             print("-" * 50)
             try:
@@ -239,17 +271,17 @@ def main():
             except Exception as e:
                 print(f"\nError inesperado: {e}")
                 
-        elif choice == "7":
+        elif choice == "8":
             config.print_config()
             
-        elif choice == "8":
+        elif choice == "9":
             manage_ollama()
             
-        elif choice == "9":
+        elif choice == "10":
             print("\nSaliendo del programa. ¡Hasta pronto!")
             sys.exit(0)
         else:
-            print("\nOpción no válida. Por favor, ingrese un número del 1 al 9.")
+            print("\nOpción no válida. Por favor, ingrese un número del 1 al 10.")
             
         input("\nPresione Enter para volver al menú...")
 
