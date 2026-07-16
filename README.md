@@ -267,8 +267,8 @@ Para programar o validar cambios en la PC de desarrollo:
    ```bash
    npm run dev
    ```
-   * El frontend estará accesible en `http://localhost:5173`.
-   * El backend API estará escuchando en `http://localhost:8000`.
+    * El frontend estará accesible en `https://localhost:5173` (se utiliza un certificado de desarrollo SSL autofirmado para habilitar la Web Crypto API requerida por MSAL.js).
+    * El backend API estará escuchando en `http://localhost:8000`.
 
 ### 🚀 2. Desplegar el Frontend en Netlify
 El cliente React está preparado para ser subido a Netlify en segundos:
