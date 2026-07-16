@@ -257,8 +257,11 @@ function App() {
         setStatus('idle');
       }
     } catch (err) {
-      showTempLog(`[CLIENT ERROR] Sin conexión con el servidor en ${apiUrl}. Verifique que el .exe esté ejecutado en la notebook local.`);
+      showTempLog(`[CLIENT ERROR] Sin conexión con el servidor en ${apiUrl}. Verifique que el servidor local esté activo.`);
       setStatus('idle');
+      setActionStarted(false); // Evitar que el useEffect interprete el fin de la acción como exitosa
+      setShowModal(false);     // Cerrar el modal de progreso
+      alert(`⚠️ Error de comunicación:\n\nNo se pudo establecer conexión con el servidor de remitos en:\n${apiUrl}\n\nPor favor, verifique:\n1. Que el ejecutable del servidor (.exe) esté iniciado en la máquina de destino.\n2. Que el dispositivo móvil esté conectado a la misma red WiFi corporativa.`);
     }
   };
 
