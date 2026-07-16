@@ -26,9 +26,6 @@ tmp/
 # Carpeta de salida de documentos procesados/extraídos
 parsed_documents/
 
-# Controladores y ejecutables locales pesados (>150MB)
-drivers_win/
-
 # Modelos descargados locales
 models/
 *.tflite

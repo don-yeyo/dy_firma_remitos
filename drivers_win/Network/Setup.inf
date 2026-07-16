@@ -1,0 +1,444 @@
+; Copyright (c) 2008-2025 Ricoh Company, Ltd.
+; Manufacturer:  RICOH
+
+[Version]
+Signature="$WINDOWS NT$"
+Class=Image
+ClassGUID={6bdd1fc6-810f-11d0-bec7-08002be2092f}
+Provider=%Brand_Ricoh%
+DriverVer=03/16/2026,2.0.17.0
+CatalogFile=RIEGe0.cat
+CatalogFile.ntx86=RIEGe086.cat
+CatalogFile.ntamd64=RIEGe064.cat
+
+[Manufacturer]
+;added 6.0 to limit the installation to vista or later
+%Brand_RICOH%=Models_RICOH, NTx86.6.0, NTamd64.6.0
+
+[SourceDisksFiles]
+readme.txt=1
+scset.ini=1, all
+
+;license
+Net-SNMP_5.9.3.0.txt=1, all\license
+OpenSSL_3.0.10.txt=1, all\license
+
+;profile
+tmp-drvi5.dat=1, all\profile
+tmp-lang.dat=1, all\profile
+
+;language
+tmp-drvs.dat=1, all\Profile\English
+tmp-list.dat=1, all\Profile\English
+tmp-reg.dat=1, all\Profile\English
+sch_tmp-drvs.dat=1, all\Profile\Simplechn
+sch_tmp-list.dat=1, all\Profile\Simplechn
+sch_tmp-reg.dat=1, all\Profile\Simplechn
+
+;scanctrl
+netset.ini=1, all\ScanCtrl
+NetworkCtl.ini=1, all\ScanCtrl
+scnhosts=1, all\ScanCtrl
+support.dat=1, all\ScanCtrl
+
+[SourceDisksFiles.x86]
+;WIA
+RWiaDrv.dll=1, x86
+RWiaExt.dll=1, x86
+RWiaErrorHandler.dll=1, x86
+
+;system
+BilW32.dll=1, x86\System
+BitW32.dll=1, x86\System
+JPCW32.DLL=1, x86\System
+JPDW32.dll=1, x86\System
+RicImg.dll=1, x86\System
+FltIm32.dll=1, x86\System
+
+;ScanCtrl
+libeay.dll=1, x86\ScanCtrl
+netsnmp.dll=1, x86\ScanCtrl
+RSClibc.dll=1, x86\ScanCtrl
+RscMg.dll=1, x86\ScanCtrl
+RSCnet.dll=1, x86\ScanCtrl
+RSCpf.dll=1, x86\ScanCtrl
+RscSecur.dll=1, x86\ScanCtrl
+RSCGenericSC.dll=1, x86\ScanCtrl
+;log output
+RSClog.dll=1, x86\ScanCtrl
+
+;resource
+rscui_cat.dll=1, x86\UI
+rscui_cze.dll=1, x86\UI
+rscui_dan.dll=1, x86\UI
+rscui_dut.dll=1, x86\UI
+rscui_eng.dll=1, x86\UI
+rscui_fin.dll=1, x86\UI
+rscui_fra.dll=1, x86\UI
+rscui_ger.dll=1, x86\UI
+rscui_hun.dll=1, x86\UI
+rscui_ita.dll=1, x86\UI
+rscui_jpn.dll=1, x86\UI
+rscui_nor.dll=1, x86\UI
+rscui_pol.dll=1, x86\UI
+rscui_por.dll=1, x86\UI
+rscui_rus.dll=1, x86\UI
+rscui_spa.dll=1, x86\UI
+rscui_swe.dll=1, x86\UI
+rscui_tur.dll=1, x86\UI
+rscui_chi.dll=1, x86\UI
+rscui_tai.dll=1, x86\UI
+rscui_gre.dll=1, x86\UI
+rscui_bra.dll=1, x86\UI
+rscui_kor.dll=1, x86\UI
+rscui_svk.dll=1, x86\UI
+rscui_rum.dll=1, x86\UI
+rscui_est.dll=1, x86\UI
+rscui_ukr.dll=1, x86\UI
+rscui_bgr.dll=1, x86\UI
+rscui_hrv.dll=1, x86\UI
+rscui_lth.dll=1, x86\UI
+rscui_lvi.dll=1, x86\UI
+rscui_slv.dll=1, x86\UI
+RSCdev_cat.dll=1, x86\Common
+RSCdev_cze.dll=1, x86\Common
+RSCdev_dan.dll=1, x86\Common
+RSCdev_dut.dll=1, x86\Common
+RSCdev_eng.dll=1, x86\Common
+RSCdev_fin.dll=1, x86\Common
+RSCdev_fra.dll=1, x86\Common
+RSCdev_ger.dll=1, x86\Common
+RSCdev_hun.dll=1, x86\Common
+RSCdev_ita.dll=1, x86\Common
+RSCdev_jpn.dll=1, x86\Common
+RSCdev_nor.dll=1, x86\Common
+RSCdev_pol.dll=1, x86\Common
+RSCdev_por.dll=1, x86\Common
+RSCdev_rus.dll=1, x86\Common
+RSCdev_spa.dll=1, x86\Common
+RSCdev_swe.dll=1, x86\Common
+RSCdev_tur.dll=1, x86\Common
+RSCdev_chn.dll=1, x86\Common
+RSCdev_twn.dll=1, x86\Common
+RSCdev_gre.dll=1, x86\Common
+RSCdev_bra.dll=1, x86\Common
+RSCdev_kor.dll=1, x86\Common
+RSCdev_svk.dll=1, x86\Common
+RSCdev_rum.dll=1, x86\Common
+RSCdev_est.dll=1, x86\Common
+RSCdev_ukr.dll=1, x86\Common
+RSCdev_bgr.dll=1, x86\Common
+RSCdev_hrv.dll=1, x86\Common
+RSCdev_lth.dll=1, x86\Common
+RSCdev_lvi.dll=1, x86\Common
+RSCdev_slv.dll=1, x86\Common
+
+[SourceDisksFiles.amd64]
+RWiaDrv.dll=1, x64
+RWiaExt.dll=1, x64
+RWiaErrorHandler.dll=1, x64
+
+;system32
+BilW32.dll=1, x64\System
+BitW32.dll=1, x64\System
+JPCW32.DLL=1, x64\System
+JPDW32.dll=1, x64\System
+RicImg.dll=1, x64\System
+FltIm32.dll=1, x64\System
+
+;ScanCtrl
+libeay.dll=1, x64\ScanCtrl
+netsnmp.dll=1, x64\ScanCtrl
+RSClibc.dll=1, x64\ScanCtrl
+RscMg.dll=1, x64\ScanCtrl
+RSCnet.dll=1, x64\ScanCtrl
+RSCpf.dll=1, x64\ScanCtrl
+RscSecur.dll=1, x64\ScanCtrl
+RSCGenericSC.dll=1, x64\ScanCtrl
+;log output
+RSClog.dll=1, x64\ScanCtrl
+
+;UI
+;resource
+rscui_cat.dll=1, x64\UI
+rscui_cze.dll=1, x64\UI
+rscui_dan.dll=1, x64\UI
+rscui_dut.dll=1, x64\UI
+rscui_eng.dll=1, x64\UI
+rscui_fin.dll=1, x64\UI
+rscui_fra.dll=1, x64\UI
+rscui_ger.dll=1, x64\UI
+rscui_hun.dll=1, x64\UI
+rscui_ita.dll=1, x64\UI
+rscui_jpn.dll=1, x64\UI
+rscui_nor.dll=1, x64\UI
+rscui_pol.dll=1, x64\UI
+rscui_por.dll=1, x64\UI
+rscui_rus.dll=1, x64\UI
+rscui_spa.dll=1, x64\UI
+rscui_swe.dll=1, x64\UI
+rscui_tur.dll=1, x64\UI
+rscui_chi.dll=1, x64\UI
+rscui_tai.dll=1, x64\UI
+rscui_gre.dll=1, x64\UI
+rscui_bra.dll=1, x64\UI
+rscui_kor.dll=1, x64\UI
+rscui_svk.dll=1, x64\UI
+rscui_rum.dll=1, x64\UI
+rscui_est.dll=1, x64\UI
+rscui_ukr.dll=1, x64\UI
+rscui_bgr.dll=1, x64\UI
+rscui_hrv.dll=1, x64\UI
+rscui_lth.dll=1, x64\UI
+rscui_lvi.dll=1, x64\UI
+rscui_slv.dll=1, x64\UI
+RSCdev_cat.dll=1, x64\Common
+RSCdev_cze.dll=1, x64\Common
+RSCdev_dan.dll=1, x64\Common
+RSCdev_dut.dll=1, x64\Common
+RSCdev_eng.dll=1, x64\Common
+RSCdev_fin.dll=1, x64\Common
+RSCdev_fra.dll=1, x64\Common
+RSCdev_ger.dll=1, x64\Common
+RSCdev_hun.dll=1, x64\Common
+RSCdev_ita.dll=1, x64\Common
+RSCdev_jpn.dll=1, x64\Common
+RSCdev_nor.dll=1, x64\Common
+RSCdev_pol.dll=1, x64\Common
+RSCdev_por.dll=1, x64\Common
+RSCdev_rus.dll=1, x64\Common
+RSCdev_spa.dll=1, x64\Common
+RSCdev_swe.dll=1, x64\Common
+RSCdev_tur.dll=1, x64\Common
+RSCdev_chn.dll=1, x64\Common
+RSCdev_twn.dll=1, x64\Common
+RSCdev_gre.dll=1, x64\Common
+RSCdev_bra.dll=1, x64\Common
+RSCdev_kor.dll=1, x64\Common
+RSCdev_svk.dll=1, x64\Common
+RSCdev_rum.dll=1, x64\Common
+RSCdev_est.dll=1, x64\Common
+RSCdev_ukr.dll=1, x64\Common
+RSCdev_bgr.dll=1, x64\Common
+RSCdev_hrv.dll=1, x64\Common
+RSCdev_lth.dll=1, x64\Common
+RSCdev_lvi.dll=1, x64\Common
+RSCdev_slv.dll=1, x64\Common
+
+[SourceDisksNames]
+1=%Disk1%,,,\.
+
+[DestinationDirs]
+DefaultDestDir=16422, %Mfg%\WIA\%MODEL_PATH%
+RScan.CopyFiles=16422, %Mfg%\WIA\%MODEL_PATH%
+RScan.TextFile=16422, %Mfg%\WIA\%MODEL_PATH%
+RScan.LicenseFiles=16422, %Mfg%\WIA\%MODEL_PATH%\License
+RScan.ProfileFiles=16422, %Mfg%\WIA\%MODEL_PATH%\Profile
+RScan.ScanCtrlFiles=16422, %Mfg%\WIA\%MODEL_PATH%\ScanCtrl
+RScan.UIFiles=16422, %Mfg%\WIA\%MODEL_PATH%\UI
+RScan.Common=16422, %Mfg%\WIA\%MODEL_PATH%\Common
+RScan.System=16422, %Mfg%\WIA\%MODEL_PATH%\System
+RScan.English=16422, %Mfg%\WIA\%MODEL_PATH%\Profile\English
+RScan.Simplechn=16422, %Mfg%\WIA\%MODEL_PATH%\Profile\Simplechn
+
+; This is the models section for the x86 driver
+[Models_RICOH.NTx86.6.0]
+%Model_RICOH_1%=Install.RScan, %HWID_RICOH_1%
+
+; This is the models section for the amd64 driver
+[Models_RICOH.NTamd64.6.0]
+%Model_RICOH_1%=Install.RScan, %HWID_RICOH_1%
+
+[Install.RScan]
+Include=sti.inf
+Needs=STI.SerialSection
+SubClass=StillImage
+Connection=Serial
+DeviceType=1
+; 0=Net/1=SCSIor1394/3=USB
+DeviceSubType=0
+Capabilities=0x30
+
+DeviceData=RScan.DeviceData
+AddReg=RScan.AddReg
+CopyFiles=RScan.CopyFiles, RScan.TextFile, RScan.LicenseFiles, RScan.ProfileFiles, RScan.ScanCtrlFiles, RScan.UIFiles, RScan.System, RScan.English, RScan.Simplechn, RScan.Common
+;ICMProfiles="is330.icm"
+;PortSelect=Message1
+Events=RScan.Events
+
+[RScan.Events]
+
+[Install.RScan.Services]
+Include=sti.inf
+Needs=STI.SerialSection.Services
+
+[RScan.DeviceData]
+Server=local
+UI Class ID=%UID_UI%
+
+[RScan.CopyFiles]
+RWiaDrv.dll
+RWiaExt.dll
+RWiaErrorHandler.dll
+
+[RScan.TextFile]
+readme.txt
+scset.ini
+
+[RScan.LicenseFiles]
+Net-SNMP_5.9.3.0.txt
+OpenSSL_3.0.10.txt
+
+[RScan.ProfileFiles]
+tmp-drvi5.dat
+tmp-lang.dat
+
+[RScan.System]
+BilW32.dll
+BitW32.dll
+JPCW32.DLL
+JPDW32.dll
+RicImg.dll
+FltIm32.dll
+
+[RScan.English]
+tmp-drvs.dat
+tmp-list.dat
+tmp-reg.dat
+
+[RScan.Simplechn]
+tmp-drvs.dat,sch_tmp-drvs.dat
+tmp-list.dat,sch_tmp-list.dat
+tmp-reg.dat,sch_tmp-reg.dat
+
+[RScan.ScanCtrlFiles]
+libeay.dll
+netset.ini
+netsnmp.dll
+NetworkCtl.ini
+RSClibc.dll
+RscMg.dll
+RSCnet.dll
+RSCpf.dll
+RscSecur.dll
+RSCGenericSC.dll
+scnhosts
+support.dat
+RSClog.dll
+
+[RScan.UIFiles]
+rscui_cat.dll
+rscui_cze.dll
+rscui_dan.dll
+rscui_dut.dll
+rscui_eng.dll
+rscui_fin.dll
+rscui_fra.dll
+rscui_ger.dll
+rscui_hun.dll
+rscui_ita.dll
+rscui_jpn.dll
+rscui_nor.dll
+rscui_pol.dll
+rscui_por.dll
+rscui_rus.dll
+rscui_spa.dll
+rscui_swe.dll
+rscui_tur.dll
+rscui_chi.dll
+rscui_tai.dll
+rscui_gre.dll
+rscui_bra.dll
+rscui_kor.dll
+rscui_svk.dll
+rscui_rum.dll
+rscui_est.dll
+rscui_ukr.dll
+rscui_bgr.dll
+rscui_hrv.dll
+rscui_lth.dll
+rscui_lvi.dll
+rscui_slv.dll
+
+[RScan.Common]
+RSCdev_cat.dll
+RSCdev_cze.dll
+RSCdev_dan.dll
+RSCdev_dut.dll
+RSCdev_eng.dll
+RSCdev_fin.dll
+RSCdev_fra.dll
+RSCdev_ger.dll
+RSCdev_hun.dll
+RSCdev_ita.dll
+RSCdev_jpn.dll
+RSCdev_nor.dll
+RSCdev_pol.dll
+RSCdev_por.dll
+RSCdev_rus.dll
+RSCdev_spa.dll
+RSCdev_swe.dll
+RSCdev_tur.dll
+RSCdev_chn.dll
+RSCdev_twn.dll
+RSCdev_gre.dll
+RSCdev_bra.dll
+RSCdev_kor.dll
+RSCdev_svk.dll
+RSCdev_rum.dll
+RSCdev_est.dll
+RSCdev_ukr.dll
+RSCdev_bgr.dll
+RSCdev_hrv.dll
+RSCdev_lth.dll
+RSCdev_lvi.dll
+RSCdev_slv.dll
+
+[RScan.AddReg]
+HKR,,HardwareConfig,1,1
+HKR,,USDClass,,%UID_USD%
+HKCR,CLSID\%UID_USD%,,,"%Mfg% WIA Scanner"
+HKCR,CLSID\%UID_USD%\InProcServer32,,,%16422%\%Mfg%\WIA\%MODEL_PATH%\RWiaDrv.dll
+HKCR,CLSID\%UID_USD%\InProcServer32,ThreadingModel,,"Both"
+
+; Error Handler
+HKCR,CLSID\%UID_UI%\shellex\ErrorHandler\%UID_ERR%
+HKCR,CLSID\%UID_ERR%,,,"%Mfg% WIA Error Handler"
+HKCR,CLSID\%UID_ERR%\InProcServer32,,,%16422%\%Mfg%\WIA\%MODEL_PATH%\RWiaErrorHandler.dll
+HKCR,CLSID\%UID_ERR%\InProcServer32,ThreadingModel,,"Both"
+
+; Ext UI
+HKCR,CLSID\%UID_UI%\shellex\WiaDialogExtensionHandlers\%UID_EUI%
+HKCR,CLSID\%UID_EUI%,,,"%Mfg% WIA Dialog Extension Handler"
+HKCR,CLSID\%UID_EUI%\InProcServer32,,,%16422%\%Mfg%\WIA\%MODEL_PATH%\RWiaExt.dll
+HKCR,CLSID\%UID_EUI%\InProcServer32,ThreadingModel,,"Apartment"
+
+; Property Sheet UI
+HKCR,CLSID\%UID_UI%\shellex\PropertySheetHandlers\%UID_SUI%
+HKCR,CLSID\%UID_SUI%,,,"%Mfg% WIA Property Sheet Handler"
+HKCR,CLSID\%UID_SUI%\InProcServer32,,,%16422%\%Mfg%\WIA\%MODEL_PATH%\RWiaExt.dll
+HKCR,CLSID\%UID_SUI%\InProcServer32,ThreadingModel,,"Apartment"
+
+[Strings]
+Msft="Microsoft"
+Mfg="RICOH"
+Location="Install Source"
+Disk1="WIA Scanner Driver"
+
+; Install directory
+; tentative
+MODEL_PATH="GenericE"
+
+; GUID
+UID_UI="{A213426E-33D0-48e7-89A0-AB85E4F99FAC}"
+UID_USD="{B1D8CB63-DE2F-4c64-B4AD-066E0DB820A2}"
+UID_ERR="{96BD32B5-073B-4b46-A1B9-098FB296CBC4}"
+UID_SUI="{4DF6A00A-826E-4aa1-86F5-15DD1A7DCB61}"
+UID_EUI="{5561BEE5-8EFC-431f-9FAF-6AE1ED8481F3}"
+
+; Additional Info
+Brand_RICOH="RICOH"
+Model_RICOH_1="Type Generic Scanner(Network) WIA"
+HWID_RICOH_1="TypeGeneric_Scanner(Network)"
+
+
