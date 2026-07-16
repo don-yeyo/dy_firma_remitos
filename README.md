@@ -28,20 +28,30 @@ El flujo de control de remitos tradicional requiere la revisión visual manual d
 
 ## Estructura del Proyecto
 
+El proyecto sigue una arquitectura **cliente/servidor desacoplada** optimizada para despliegues locales rápidos en PC/VM y publicación de frontend en la nube (Netlify):
+
 ```text
 dy_firma_remitos/
-├── .env                  # Configuración local de base de datos, APIs y escaneo (no se sube a Git)
-├── .env.template         # Plantilla base para recrear el entorno en otra PC
-├── .gitignore            # Exclusiones optimizadas para mantener el repositorio liviano
-├── config.py             # Módulo central de carga de variables de configuración
-├── scanner.py            # Módulo de integración WIA para control físico del escáner Ricoh
-├── recognition.py        # Módulo de visión artificial y reconocimiento de firmas (OpenCV/IA)
-├── main.py               # Menú interactivo CLI para el usuario final en la administración
-├── requirements.txt      # Librerías de Python requeridas
-├── driver_manager.py     # Administrador para instalar controladores automáticamente desde el menú
-├── docs/                 # Documentación del proyecto (guías de configuración de modelos VLMs)
-├── drivers_win/          # Controladores oficiales Network WIA y Tesseract OCR (locales)
-└── models/               # Modelos locales de visión artificial (.tflite)
+├── client/                 # Aplicación Frontend React + Vite + MSAL
+│   ├── src/
+│   │   ├── config/         # Configuración de MSAL Azure AD y AuthContext
+│   │   ├── App.jsx         # Dashboard móvil con consola virtual y logs
+│   │   └── index.css       # Estilos Glassmorphism Premium (Tema Oscuro)
+│   ├── .env                # Variables de Azure AD para desarrollo
+│   └── .env.template       # Plantilla de variables del cliente
+├── server/                 # Servidor Backend Python + FastAPI
+│   ├── server.py           # API REST con captura de logs en vivo (stdout)
+│   ├── config.py           # Carga de variables de entorno locales
+│   ├── scanner.py          # Integración WIA y control físico del escáner
+│   ├── recognition.py      # Análisis de imágenes y auditoría por IA
+│   ├── sync_remitos.py     # Módulo de sincronización con Finnegans ERP
+│   ├── build_exe.bat       # Script para compilar el backend a ejecutable .exe
+│   ├── requirements.txt    # Librerías Python requeridas (con FastAPI/PyInstaller)
+│   ├── .env                # Configuración de red y base de datos (oculto en Git)
+│   └── .env.template       # Plantilla de variables del servidor
+├── package.json            # Scripts de orquestación de desarrollo concurrente
+├── netlify.toml            # Configuración de despliegue del cliente en Netlify
+└── README.md
 ```
 
 ---
@@ -235,6 +245,51 @@ Para que el proceso se ejecute de manera desatendida y automática de fondo (por
    * Haz clic en finalizar.
 
 Los logs de sincronización se guardarán en la carpeta `logs/sync_remitos.log` de forma local para control administrativo.
+
+---
+
+## 🌐 Arquitectura Web Móvil (Netlify + Servidor local)
+
+Para facilitar la operatoria diaria estando físicamente parados frente a la multifunción Ricoh, el sistema cuenta con un frontend móvil responsivo accesible desde celulares y un backend local que se comunica con el escáner.
+
+### 💻 1. Ejecutar en Desarrollo Concurrente
+Para programar o validar cambios en la PC de desarrollo:
+1. Instale las dependencias del frontend:
+   ```bash
+   npm run install-all
+   ```
+2. Inicie ambos servicios concurrentemente (Vite + FastAPI):
+   ```bash
+   npm run dev
+   ```
+   * El frontend estará accesible en `http://localhost:5173`.
+   * El backend API estará escuchando en `http://localhost:8000`.
+
+### 🚀 2. Desplegar el Frontend en Netlify
+El cliente React está preparado para ser subido a Netlify en segundos:
+1. Conecte el repositorio a Netlify.
+2. Netlify detectará automáticamente el archivo [netlify.toml](file:///c:/Users/gabrielt/Documents/Proyectos/Automatizaci%C3%B3nFirmaRemitos/dy_firma_remitos/netlify.toml) en la raíz del proyecto.
+3. Configure las variables de entorno de Azure AD en el panel de Netlify:
+   * `VITE_AZURE_AD_CLIENT_ID`
+   * `VITE_AZURE_AD_TENANT_ID`
+   * `VITE_MOCK_AUTH` (Establecer a `false` en producción Netlify).
+
+### 📦 3. Compilar el Servidor a Ejecutable `.exe` (PyInstaller)
+Si desea correr el backend en cualquier notebook o máquina virtual (VM) de la LAN sin instalar Python:
+1. Ejecute el archivo de lote:
+   ```powershell
+   .\server\build_exe.bat
+   ```
+2. Al finalizar, el ejecutable autocontenido se creará en la carpeta `dist_server/dy_remitos_server.exe`.
+3. Mueva ese `.exe` junto con su archivo de configuración `.env` a la notebook o servidor de red local.
+4. Ejecute el `.exe` con doble clic. Se abrirá una ventana de comandos de Windows mostrando la IP local de escucha (ej. `Uvicorn running on http://192.168.1.100:8000`).
+
+### 📱 4. Conectar el celular al Servidor local en la LAN
+1. Asegúrese de que el celular del operador esté conectado a la **misma red WiFi corporativa** que la notebook o VM servidor.
+2. Ingrese a la URL de Netlify desde el celular.
+3. Presione el ícono de **Configuración de Red (Rueda dentada)** arriba a la derecha.
+4. Escriba la dirección IP de la notebook/VM servidor local que se muestra en la consola del `.exe` (ej: `http://192.168.1.100:8000`) y presione guardar.
+5. ¡Listo! Ya puede disparar el escaneo masivo desde el celular parado junto a la Ricoh y ver el progreso en tiempo real.
 
 ---
 

@@ -49,3 +49,31 @@ docs/*.docx
 Thumbs.db
 Desktop.ini
 .DS_Store
+
+# Node.js
+client/node_modules/
+node_modules/
+client/dist/
+
+# PyInstaller y compilaciones del servidor
+server/build/
+server/dist/
+server/*.spec
+dist_server/
+*.spec
+build/
+dist/
+
+# Exclusiones recursivas de entornos y configuraciones locales
+**/.env
+**/server/.env
+**/client/.env
+**/.env.local
+**/.env.*.local
+**/__pycache__/
+**/*.pyc
+**/*.pyo
+**/*.pyd
+.venv/
+venv/
+

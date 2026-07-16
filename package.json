@@ -1,0 +1,16 @@
+{
+  "name": "automatizacion-firma-remitos",
+  "version": "1.0.0",
+  "description": "Sistema de Escaneo, Firma y Auditoria de Remitos - Don Yeyo S.A.",
+  "main": "server/server.py",
+  "scripts": {
+    "dev": "concurrently \"npm run dev --prefix client\" \"uv run python server/server.py\"",
+    "install-all": "npm install --prefix client",
+    "server": "uv run python server/server.py",
+    "client": "npm run dev --prefix client",
+    "build-client": "npm run build --prefix client"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.0"
+  }
+}
