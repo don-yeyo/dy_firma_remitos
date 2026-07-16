@@ -89,6 +89,133 @@ class APIStreamLogger:
 sys.stdout = APIStreamLogger(sys.stdout, log_buffer.add)
 sys.stderr = APIStreamLogger(sys.stderr, log_buffer.add)
 
+# Función SMTP para notificaciones por email asíncronas
+def send_audit_email(action_name: str, log_slice: list):
+    import smtplib
+    from email.mime.text import MIMEText
+    from email.mime.multipart import MIMEMultipart
+    import re
+    import config
+
+    if not config.EMAIL_DESTINATARIOS:
+        print("[SMTP] No hay destinatarios definidos en EMAIL_DESTINATARIOS. Se cancela el envío.")
+        return
+
+    destinatarios = [email.strip() for email in config.EMAIL_DESTINATARIOS.split(",") if email.strip()]
+    if not destinatarios:
+        return
+
+    print(f"[SMTP] Preparando envío de reporte de auditoría a {len(destinatarios)} destinatarios...")
+    try:
+        # Calcular estadísticas de esta corrida
+        stats = {
+            "escaneados": 0,
+            "exitosos_ia": 0,
+            "fallidos_ia": 0,
+            "bd_actualizados": 0,
+            "bd_no_encontrados": 0
+        }
+
+        for line in log_slice:
+            if "guardada en:" in line or "guardada directamente" in line or "procesada y guardada" in line:
+                stats["escaneados"] += 1
+            if "Procesado exitosamente" in line:
+                stats["exitosos_ia"] += 1
+            if "Error durante el análisis" in line or "Excepción en procesamiento" in line:
+                stats["fallidos_ia"] += 1
+            if "Base de Datos actualizada con éxito" in line or "✔ [BD]" in line:
+                stats["bd_actualizados"] += 1
+            if "No se encontró ningún registro" in line or "❌ No se encontró en DB" in line:
+                stats["bd_no_encontrados"] += 1
+
+        # Intentar leer total de páginas por regex
+        scan_text = "\n".join(log_slice)
+        scan_match = re.search(r"Total de páginas escaneadas:\s*(\d+)", scan_text, re.IGNORECASE)
+        if scan_match:
+            stats["escaneados"] = int(scan_match.group(1))
+
+        # Asunto y Cuerpo HTML
+        subject = f"🔔 Resumen de Auditoría de Remitos: {action_name}"
+        logs_html = "<br>".join(log_slice)
+
+        html = f"""
+        <html>
+        <head>
+          <style>
+            body {{ font-family: Arial, sans-serif; color: #333; }}
+            .container {{ max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #ddd; border-radius: 8px; }}
+            .header {{ background-color: #0d2c5c; color: white; padding: 15px; text-align: center; border-radius: 6px 6px 0 0; }}
+            .content {{ padding: 20px; }}
+            .stats-table {{ width: 100%; border-collapse: collapse; margin-top: 15px; }}
+            .stats-table td, .stats-table th {{ padding: 10px; border: 1px solid #ddd; text-align: left; }}
+            .stats-table th {{ background-color: #f8fafc; }}
+            .value {{ text-align: right; font-weight: bold; }}
+            .footer {{ font-size: 11px; color: #777; text-align: center; margin-top: 20px; padding-top: 15px; border-top: 1px solid #eee; }}
+            .logs-box {{ background-color: #f4f6f8; padding: 15px; border-radius: 6px; font-family: monospace; font-size: 11px; max-height: 250px; overflow-y: auto; border: 1px solid #e2e8f0; line-height: 1.4; }}
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <h2 style="margin: 0;">Don Yeyo S.A.</h2>
+              <p style="margin: 0; font-size: 12px; color: #cbd5e1;">Control y Auditoría de Remitos Firmados</p>
+            </div>
+            <div class="content">
+              <p>Hola,</p>
+              <p>Se ha completado la ejecución de <strong>{action_name}</strong> desde el sistema. A continuación, el resumen de resultados:</p>
+              
+              <table class="stats-table">
+                <tr>
+                  <th>Métrica</th>
+                  <th style="text-align: right;">Cantidad</th>
+                </tr>
+                <tr>
+                  <td>Páginas escaneadas físicamente</td>
+                  <td class="value">{stats["escaneados"]}</td>
+                </tr>
+                <tr>
+                  <td>Remitos interpretados por IA (OK)</td>
+                  <td class="value" style="color: #10b981;">{stats["exitosos_ia"]}</td>
+                </tr>
+                {f'<tr><td style="color: #ef4444;">Análisis de IA fallidos</td><td class="value" style="color: #ef4444;">{stats["fallidos_ia"]}</td></tr>' if stats["fallidos_ia"] > 0 else ''}
+                <tr>
+                  <td>Auditorías registradas en Base de Datos</td>
+                  <td class="value" style="color: #0d2c5c;">{stats["bd_actualizados"]}</td>
+                </tr>
+                {f'<tr><td style="color: #f59e0b;">No encontrados en BD (Sin ERP)</td><td class="value" style="color: #f59e0b;">{stats["bd_no_encontrados"]}</td></tr>' if stats["bd_no_encontrados"] > 0 else ''}
+              </table>
+
+              <div style="margin-top: 25px;">
+                <strong>Logs de Eventos Generados:</strong>
+                <div class="logs-box">{logs_html}</div>
+              </div>
+            </div>
+            <div class="footer">
+              Este es un correo automático generado por el sistema de Firma de Remitos Don Yeyo S.A.<br>
+              Servidor local: {config.ALERTA_SMTP_NAME}
+            </div>
+          </div>
+        </body>
+        </html>
+        """
+
+        msg = MIMEMultipart("alternative")
+        msg["Subject"] = subject
+        msg["From"] = f'"{config.ALERTA_SMTP_NAME}" <{config.ALERTA_SMTP_USER}>'
+        msg["To"] = ", ".join(destinatarios)
+        msg.attach(MIMEText(html, "html", "utf-8"))
+
+        with smtplib.SMTP(config.ALERTA_SMTP_HOST, config.ALERTA_SMTP_PORT, timeout=10) as server:
+            server.starttls()
+            server.login(config.ALERTA_SMTP_USER, config.ALERTA_SMTP_PASSWORD)
+            server.sendmail(config.ALERTA_SMTP_USER, destinatarios, msg.as_string())
+        print(f"[SMTP] Resumen de auditoría enviado silenciosamente por email a: {', '.join(destinatarios)}")
+    except Exception as e:
+        print(f"[SMTP ERROR] Falló el envío de notificaciones por email: {e}")
+
+def run_email_async(action_name: str, log_slice: list):
+    threading.Thread(target=send_audit_email, args=(action_name, log_slice), daemon=True).start()
+
 # Estado global de tareas activas
 active_process = {
     "status": "idle",  # idle, scanning, processing, scanning-and-processing, syncing
@@ -119,6 +246,7 @@ def start_scan():
         active_process["status"] = "scanning"
         
     def run_scan():
+        start_index = len(log_buffer.logs)
         try:
             import scanner
             scanner.trigger_scan()
@@ -127,6 +255,7 @@ def start_scan():
         finally:
             with process_lock:
                 active_process["status"] = "idle"
+            run_email_async("Escaneo Masivo (Paso 1)", log_buffer.get()[start_index:])
                 
     threading.Thread(target=run_scan, daemon=True).start()
     return {"status": "started", "message": "Proceso de escaneo masivo iniciado."}
@@ -141,6 +270,7 @@ def start_process():
         active_process["status"] = "processing"
         
     def run_processing():
+        start_index = len(log_buffer.logs)
         try:
             import recognition
             processor = recognition.DocumentProcessor()
@@ -150,6 +280,7 @@ def start_process():
         finally:
             with process_lock:
                 active_process["status"] = "idle"
+            run_email_async("Procesamiento por IA (Paso 2)", log_buffer.get()[start_index:])
                 
     threading.Thread(target=run_processing, daemon=True).start()
     return {"status": "started", "message": "Proceso de análisis por IA de imágenes iniciado."}
@@ -164,6 +295,7 @@ def start_scan_and_process():
         active_process["status"] = "scanning-and-processing"
         
     def run_full_flow():
+        start_index = len(log_buffer.logs)
         try:
             import scanner
             import recognition
@@ -180,6 +312,7 @@ def start_scan_and_process():
         finally:
             with process_lock:
                 active_process["status"] = "idle"
+            run_email_async("Flujo Completo (Escaneo + Procesamiento IA)", log_buffer.get()[start_index:])
                 
     threading.Thread(target=run_full_flow, daemon=True).start()
     return {"status": "started", "message": "Flujo completo (Escaneo + Procesamiento IA) iniciado."}
@@ -194,9 +327,9 @@ def start_sync():
         active_process["status"] = "syncing"
         
     def run_sync():
+        start_index = len(log_buffer.logs)
         try:
             import subprocess
-            # Ejecutar el script local sync_remitos.py
             script_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "sync_remitos.py")
             subprocess.run([sys.executable, script_path], check=True)
         except Exception as e:
@@ -204,9 +337,11 @@ def start_sync():
         finally:
             with process_lock:
                 active_process["status"] = "idle"
+            run_email_async("Actualización de remitos desde ERP Finnegans", log_buffer.get()[start_index:])
                 
     threading.Thread(target=run_sync, daemon=True).start()
     return {"status": "started", "message": "Proceso de sincronización con Finnegans iniciado."}
+
 
 @app.get("/api/history")
 def get_history():

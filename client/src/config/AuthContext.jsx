@@ -11,20 +11,8 @@ export const AuthProvider = ({ children }) => {
     const [isAuthenticated, setIsAuthenticated] = useState(false);
     const [user, setUser] = useState(null);
 
+    // 1. Seteo del estado ante Autenticación con Microsoft Real
     useEffect(() => {
-        // BYPASS DE AUTENTICACION PARA DESARROLLO LOCAL
-        if (import.meta.env.DEV && import.meta.env.VITE_MOCK_AUTH === 'true') {
-            const mockEmail = import.meta.env.VITE_MOCK_AUTH_EMAIL || "operador.mock@donyeyo.com.ar";
-            setIsAuthenticated(true);
-            setUser({
-                name: "Operador de Pruebas (Mock)",
-                email: mockEmail,
-                provider: 'mock',
-                avatar: null
-            });
-            return;
-        }
-
         if (isMsAuthenticated && accounts.length > 0) {
             setIsAuthenticated(true);
             setUser({
@@ -34,26 +22,52 @@ export const AuthProvider = ({ children }) => {
                 avatar: null
             });
         } else {
-            setIsAuthenticated(false);
-            setUser(null);
+            // Solo limpiar si no estamos en bypass Mock de desarrollo local
+            if (!(import.meta.env.DEV && import.meta.env.VITE_MOCK_AUTH === 'true')) {
+                setIsAuthenticated(false);
+                setUser(null);
+            }
         }
     }, [isMsAuthenticated, accounts]);
 
-    const loginMicrosoft = () => {
-        // En modo mock no redirigir a Microsoft
+    // 2. BYPASS DE AUTENTICACION PARA DESARROLLO LOCAL
+    useEffect(() => {
         if (import.meta.env.DEV && import.meta.env.VITE_MOCK_AUTH === 'true') {
-            return;
+            const mockEmail = import.meta.env.VITE_MOCK_AUTH_EMAIL;
+
+            if (!mockEmail) {
+                alert("⚠️ Error: VITE_MOCK_AUTH está activo pero falta setear VITE_MOCK_AUTH_EMAIL en el archivo .env");
+                console.error("VITE_MOCK_AUTH está activo pero falta setear VITE_MOCK_AUTH_EMAIL");
+                setIsAuthenticated(false);
+                setUser(null);
+                return;
+            }
+
+            if (!user || (user.provider !== 'microsoft' && user.email !== mockEmail)) {
+                console.log(`⚠️ MODO MOCK ACTIVADO: Entrando como ${mockEmail}`);
+                setIsAuthenticated(true);
+                setUser({
+                    name: "Usuario Mock",
+                    email: mockEmail,
+                    provider: 'mock',
+                    avatar: null
+                });
+            }
         }
-        instance.loginRedirect(loginRequest).catch(e => console.error("MSAL Login Error:", e));
+    }, [user, isMsAuthenticated]);
+
+    const loginMicrosoft = () => {
+        instance.loginRedirect(loginRequest).catch(e => console.error(e));
     };
 
     const logout = () => {
-        if (import.meta.env.DEV && import.meta.env.VITE_MOCK_AUTH === 'true') {
+        if (user?.provider === 'microsoft') {
+            instance.logoutRedirect().catch(e => console.error(e));
+        } else {
+            // Limpieza local del estado mock
             setIsAuthenticated(false);
             setUser(null);
-            return;
         }
-        instance.logoutRedirect().catch(e => console.error("MSAL Logout Error:", e));
     };
 
     return (

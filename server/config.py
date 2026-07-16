@@ -127,4 +127,14 @@ CSV_LOG_PATH = os.path.join(PARSED_DIR, "processed_log.csv")
 if not os.path.exists(PARSED_DIR):
     os.makedirs(PARSED_DIR)
 
+# Configuración SMTP para Notificaciones por Correo
+ALERTA_SMTP_HOST = os.getenv("ALERTA_SMTP_HOST", "smtp-mail.outlook.com")
+ALERTA_SMTP_PORT = int(os.getenv("ALERTA_SMTP_PORT", "587"))
+ALERTA_SMTP_USER = os.getenv("ALERTA_SMTP_USER", "")
+ALERTA_SMTP_PASSWORD = os.getenv("ALERTA_SMTP_PASSWORD", "")
+ALERTA_SMTP_NAME = os.getenv("ALERTA_SMTP_NAME", "Remitos Don Yeyo")
+EMAIL_DESTINATARIOS = os.getenv("EMAIL_DESTINATARIOS", "")
+EMAIL_SILENCIOSO = os.getenv("EMAIL_SILENCIOSO", "true").lower() == "true"
+
+
 
