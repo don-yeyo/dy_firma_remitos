@@ -417,6 +417,26 @@ def get_config():
         "DB_USER": config.DB_USER
     }
 
+# Montar el frontend React compilado en la raíz si la carpeta 'client/dist' existe
+client_dist_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "client", "dist")
+if os.path.exists(client_dist_path):
+    from fastapi.staticfiles import StaticFiles
+    from fastapi.responses import FileResponse
+    
+    # Montar assets estáticos de React
+    assets_path = os.path.join(client_dist_path, "assets")
+    if os.path.exists(assets_path):
+        app.mount("/assets", StaticFiles(directory=assets_path), name="assets")
+        
+    # Ruta catch-all de respaldo para servir index.html (Soporte SPA para recargas del navegador)
+    @app.get("/{catchall:path}")
+    def serve_client(catchall: str):
+        # Si empieza con api/, FastAPI debe tirar un error 404 normal
+        if catchall.startswith("api/"):
+            from fastapi import HTTPException
+            raise HTTPException(status_code=404, detail="API Endpoint no encontrado")
+        return FileResponse(os.path.join(client_dist_path, "index.html"))
+
 if __name__ == "__main__":
     import uvicorn
     # Iniciar localmente escuchando en todas las interfaces de red de la LAN en el puerto 8000

@@ -291,6 +291,42 @@ Si desea correr el backend en cualquier notebook o máquina virtual (VM) de la L
 4. Escriba la dirección IP de la notebook/VM servidor local que se muestra en la consola del `.exe` (ej: `http://192.168.1.100:8000`) y presione guardar.
 5. ¡Listo! Ya puede disparar el escaneo masivo desde el celular parado junto a la Ricoh y ver el progreso en tiempo real.
 
+### ⚙️ 5. Guía de Despliegue en VM Local (Producción)
+
+Si vas a realizar el despliegue del servidor en una **Máquina Virtual (VM)** con Windows dentro de la red corporativa de la empresa (ej. con la IP `192.168.1.123`):
+
+#### A. Habilitar Puerto en el Firewall de la VM
+Windows Server o Windows 10 bloquean por defecto el puerto `8000`. Para permitir conexiones desde los celulares en el WiFi de la oficina, debés abrir el puerto.
+* **Por comando (Recomendado)**: Abrí **PowerShell como Administrador** en la VM y ejecutá:
+  ```powershell
+  New-NetFirewallRule -DisplayName "Servidor Remitos API" -Direction Inbound -LocalPort 8000 -Protocol TCP -Action Allow
+  ```
+* **Por interfaz gráfica**:
+  1. Abrí *Firewall de Windows con seguridad avanzada*.
+  2. Hacé clic en *Reglas de entrada* y seleccioná *Nueva regla...*
+  3. Elegí *Puerto*, TCP, *Puertos locales específicos:* `8000`.
+  4. Seleccioná *Permitir la conexión* y dale un nombre (ej. `Servidor Remitos API`).
+
+#### B. Despliegue del Frontend: Método 1 - En la Nube (Netlify)
+Es ideal para centralizar el acceso público desde cualquier dispositivo móvil:
+1. Subí la carpeta `/client` a Netlify.
+2. En las configuraciones de Netlify, declara la variable de entorno para Netlify:
+   `VITE_API_URL=http://192.168.1.123:8000`
+3. **Restricción de Contenido Mixto (Mixed Content)**: Como Netlify corre bajo `https://` y la VM de la empresa bajo `http://`, los navegadores de los celulares (Chrome, Safari) bloquearán las peticiones por seguridad.
+   * **Solución**: En el Chrome del celular, presioná el icono de ajustes/candado al lado de la barra de direcciones de Netlify, ingresá a *Configuración del sitio* y cambiá **Contenido no seguro** a **Permitir**.
+
+#### C. Despliegue del Frontend: Método 2 - Autocontenido en la VM (✔ Altamente Recomendado)
+Evita el despliegue en Netlify, elimina problemas de HTTPS/Mixed Content y funciona 100% local aunque se caiga el enlace de Internet:
+1. Compilá el frontend localmente ejecutando en la raíz de tu proyecto:
+   ```bash
+   npm run build-client
+   ```
+   *Esto creará la carpeta estática lista para producción en `client/dist/`.*
+2. El servidor de FastAPI (`server.py` o el `.exe` compilado) detectará automáticamente la existencia de esa carpeta al arrancar y **servirá tanto el Frontend como el Backend en el mismo puerto `8000`**.
+3. El operador solo debe conectarse al WiFi corporativo e ingresar desde su celular directamente a:
+   `http://192.168.1.123:8000`
+   *(Al correr todo bajo HTTP y la misma IP, el navegador lo cargará al instante y sin restricciones de seguridad de ningún tipo).*
+
 ---
 
 ## Troubleshooting
