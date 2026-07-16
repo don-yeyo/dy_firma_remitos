@@ -327,6 +327,27 @@ Evita el despliegue en Netlify, elimina problemas de HTTPS/Mixed Content y funci
    `http://192.168.1.123:8000`
    *(Al correr todo bajo HTTP y la misma IP, el navegador lo cargará al instante y sin restricciones de seguridad de ningún tipo).*
 
+#### D. Levantar el Servidor en la VM usando Python Nativo (Sin usar el .exe)
+Si la VM ya cuenta con Python instalado y preferís correr el servidor directamente con el intérprete de Python (en lugar de usar el ejecutable `.exe` compilado), seguí estos pasos:
+
+1. **Copiar archivos**: Copiá la carpeta `/server` (y el archivo `.env` configurado dentro de ella) al directorio de la VM. Si usás el *Método 2 (autocontenido)*, también debés copiar la carpeta compilada `/client/dist` al mismo nivel jerárquico.
+2. **Crear Entorno Virtual**: Abrí la terminal en la carpeta `/server` de la VM y ejecutá:
+   ```bash
+   python -m venv .venv
+   ```
+3. **Activar el Entorno**:
+   * En CMD: `.venv\Scripts\activate.bat`
+   * En PowerShell: `.venv\Scripts\Activate.ps1`
+4. **Instalar Dependencias**:
+   ```bash
+   pip install -r requirements.txt
+   ```
+5. **Iniciar el Servidor**:
+   ```bash
+   python server.py
+   ```
+   *El servidor leerá tu configuración del `.env`, se conectará a la base de datos de AWS y quedará escuchando peticiones en todas las interfaces en el puerto `8000`.*
+
 ---
 
 ## Troubleshooting
