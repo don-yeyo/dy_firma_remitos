@@ -331,20 +331,36 @@ Evita el despliegue en Netlify, elimina problemas de HTTPS/Mixed Content y funci
 Si la VM ya cuenta con Python instalado y preferís correr el servidor directamente con el intérprete de Python (en lugar de usar el ejecutable `.exe` compilado), seguí estos pasos:
 
 1. **Copiar archivos**: Copiá la carpeta `/server` (y el archivo `.env` configurado dentro de ella) al directorio de la VM. Si usás el *Método 2 (autocontenido)*, también debés copiar la carpeta compilada `/client/dist` al mismo nivel jerárquico.
-2. **Crear Entorno Virtual**: Abrí la terminal en la carpeta `/server` de la VM y ejecutá:
-   ```bash
-   python -m venv .venv
-   ```
+2. **Crear Entorno Virtual**: 
+   * **Con Python nativo**: Abrí la terminal en la carpeta `/server` de la VM y ejecutá:
+     ```bash
+     python -m venv .venv
+     ```
+   * **Con `uv` (si está instalado)**: Si tenés `uv` instalado podés usarlo para mayor velocidad. Si te arroja el error `uv: command not found`, podés instalarlo primero con `pip install uv` y luego crear el entorno:
+     ```bash
+     uv venv --python 3.10
+     ```
 3. **Activar el Entorno**:
+   * En Git Bash / MINGW64: `source .venv/Scripts/activate`
    * En CMD: `.venv\Scripts\activate.bat`
    * En PowerShell: `.venv\Scripts\Activate.ps1`
 4. **Instalar Dependencias**:
+   > [!IMPORTANT]
+   > Asegurate de estar dentro de la carpeta `/server` al instalar, ya que las dependencias no están en la raíz del proyecto. Si estás en la raíz, debés apuntar al archivo de la subcarpeta:
    ```bash
-   pip install -r requirements.txt
+   # Si estás dentro de /server:
+   pip install -r requirements.txt   # o: uv pip install -r requirements.txt
+   
+   # Si estás parado en la raíz del repositorio:
+   pip install -r server/requirements.txt   # o: uv pip install -r server/requirements.txt
    ```
 5. **Iniciar el Servidor**:
    ```bash
+   # Estando dentro de la carpeta /server:
    python server.py
+   
+   # O desde la raíz del repositorio:
+   python server/server.py
    ```
    *El servidor leerá tu configuración del `.env`, se conectará a la base de datos de AWS y quedará escuchando peticiones en todas las interfaces en el puerto `8000`.*
 
