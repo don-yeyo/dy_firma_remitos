@@ -54,19 +54,30 @@ dy_firma_remitos/
 
 ### 2. Driver WIA de la Multifunción RICOH IM C300
 
-Para que Windows reconozca el escáner a través de la red, existen **dos tipos de drivers WIA**. Es importante instalar el correcto:
+Para que Windows reconozca el escáner a través de la red, existen **dos tipos de drivers WIA**:
 
-#### Driver WSD Genérico de Windows (No recomendado)
-- Se instala automáticamente cuando Windows detecta la impresora en la red vía WSD (Web Services for Devices).
-- Aparece como **"Dispositivo de digitalización de WSD"** en la descripción del dispositivo.
-- **Problema conocido**: Muchas Ricoh tienen la opción *"Prohibir comando esc. WSD"* activada por defecto, lo que bloquea el escaneo remoto (Pull Scan) desde el ADF con error `E_FAIL (-2147467259)`.
+#### A. Driver Nativo WSD de Ricoh (✔ Recomendado tras configurar la web de la impresora)
+- Se instala automáticamente cuando Windows detecta la impresora en la red vía WSD (Web Services for Devices) y aparece como **"RICOH IM C300"** en el sistema.
+- **IMPORTANTE: Habilitación de Digitalización WSD en la fotocopiadora**:
+  Por seguridad, las Ricoh tienen el escaneo WSD remoto bloqueado de fábrica. Para habilitarlo, siga estos pasos:
+  1. Abra un navegador web e ingrese a la dirección IP de la impresora: `http://192.168.1.54/` (Web Image Monitor).
+  2. Haga clic en **Iniciar sesión** (Login) arriba a la derecha.
+     * **Usuario**: `admin`
+     * **Contraseña**: *dejar en blanco* (vacía por defecto).
+  3. En el menú lateral izquierdo, vaya a **Gestión del dispositivo** (Device Management) → **Configuración** (Configuration).
+  4. En la sección **Escáner** (Scanner), haga clic en **Ajustes iniciales** (Initial Settings).
+  5. Busque la opción **Utilizar WSD o DSM** (Use WSD or DSM) y seleccione **WSD**.
+  6. En la misma pantalla, ubique la sección **Prohibir comando esc. WSD** (Prohibit WSD Scan command / Wsd Reading) y seleccione la opción **Permitir** o **No prohibir** (Permit / Wsd Reading Permission).
+  7. Presione **Aceptar** (OK) para guardar y aplicar los cambios.
 
-#### Driver Network WIA de Ricoh (✔ Recomendado)
+Una vez configurado, este es el mejor driver ya que controla el alimentador de hojas automático (SPDF) nativamente sin incompatibilidades.
+
+#### B. Driver Network WIA de Ricoh (Alternativa directa por IP)
 - Se conecta **directamente por IP** al escáner, sin pasar por el protocolo WSD.
 - Aparece como **"Type Generic Scanner(Network) WIA"** en la lista de dispositivos.
-- **Solución definitiva** al bloqueo de WSD. Este es el driver que se debe usar.
+- Se puede usar como alternativa en caso de que WSD falle.
 
-**Instalación del Driver Network WIA (método probado):**
+**Instalación del Driver Network WIA:**
 
 1. **Desde el menú interactivo** (Opción 1): Seleccione el archivo `Setup.inf` del driver Network WIA. El programa ejecutará `pnputil` con elevación UAC y abrirá el panel de Escáneres y Cámaras automáticamente.
 
@@ -147,10 +158,13 @@ Analiza las imágenes de la carpeta de escaneo usando un modelo de lenguaje visu
   * El flujo retorna los resultados y guarda el remito en el servidor de SharePoint.
   * El script de Python recibe el resultado, decodifica el path de SharePoint y, utilizando la variable `SHAREPOINT_FQDN`, genera y formatea de forma automática la **URL directa y pública al remito archivado en SharePoint** (preservando los espacios y caracteres especiales de la ruta).
 
-### 6. Mostrar Configuración Actual (.env)
+### 6. Sincronizar Remitos desde Finnegans (ERP)
+Ejecuta de manera inmediata la lógica de sincronización del script `sync_remitos.py` desde el menú principal. Conecta a la API de Finnegans, descarga el reporte `AFIRMAREMVEN_MG` y actualiza/inserta los remitos correspondientes en la base de datos de AWS MySQL, informando del progreso paso a paso por consola.
+
+### 7. Mostrar Configuración Actual (.env)
 Imprime en pantalla los parámetros con los que está operando el sistema actualmente (DPI, Color, Formato, etc.).
 
-### 7. Gestionar Servicio Ollama (VLM Local)
+### 8. Gestionar Servicio Ollama (VLM Local)
 Submenú para iniciar, detener, verificar estado del servidor Ollama y liberar memoria RAM/VRAM.
 
 ---

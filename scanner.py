@@ -48,26 +48,26 @@ def test_device_connection(device_id, name):
         
         if device_info:
             scanner = device_info.Connect()
-            print("✔ [Escáner (WIA)]: Conexión exitosa. El escáner responde.")
+            print("[OK] [Escáner (WIA)]: Conexión exitosa. El escáner responde.")
             scanner_ok = True
         else:
-            print("❌ [Escáner (WIA)]: Dispositivo no encontrado en WIA.")
+            print("[ERROR] [Escáner (WIA)]: Dispositivo no encontrado en WIA.")
     except Exception as e:
-        print(f"❌ [Escáner (WIA)]: Error al conectar: {e}")
+        print(f"[ERROR] [Escáner (WIA)]: Error al conectar: {e}")
         
     # 2. Prueba de Impresora (win32print)
     try:
         # Intentar abrir la cola de impresión usando el nombre del escáner
         handle = win32print.OpenPrinter(name)
         info = win32print.GetPrinter(handle, 2)
-        print("✔ [Impresora (Windows)]: Conexión exitosa con la cola de impresión.")
+        print("[OK] [Impresora (Windows)]: Conexión exitosa con la cola de impresión.")
         print(f"   - Puerto: {info['pPortName']}")
         print(f"   - Driver: {info['pDriverName']}")
         print(f"   - Trabajos en cola: {info['cJobs']}")
         win32print.ClosePrinter(handle)
         printer_ok = True
     except Exception as e:
-        print(f"⚠ [Impresora (Windows)]: No se pudo abrir la cola de impresión '{name}' directamente: {e}")
+        print(f"[WARN] [Impresora (Windows)]: No se pudo abrir la cola de impresión '{name}' directamente: {e}")
         print("   Nota: Es normal si el nombre del escáner difiere ligeramente del nombre de la impresora mapeada.")
         
     return scanner_ok, printer_ok
@@ -243,16 +243,29 @@ def configure_scanner_properties(scanner_item, root_device):
     """Establece los parámetros configurados en el .env en el escáner."""
     
     # 1. Configurar Origen del Papel en el dispositivo raíz
-    source_val = 1 if config.SCAN_SOURCE == "ADF" else 2
+    if str(config.SCAN_SOURCE).isdigit():
+        source_val = int(config.SCAN_SOURCE)
+    else:
+        source_val = 1 if config.SCAN_SOURCE == "ADF" else 2
+        
     try:
         # Configurar Document Handling Select (3088)
         for prop in root_device.Properties:
             if prop.PropertyID == 3088: # WIA_DPS_DOCUMENT_HANDLING_SELECT
+                try:
+                    subtype = prop.SubType
+                    if subtype == 2: # List
+                        allowed_vals = list(prop.SubTypeValues)
+                        print(f"   [WIA] Valores de origen (3088) permitidos por el driver: {allowed_vals}")
+                    elif subtype == 3: # Flag/Bitmask
+                        print(f"   [WIA] Máscara de bits de origen (3088) permitida: {prop.SubTypeValues}")
+                except:
+                    pass
                 prop.Value = source_val
                 print(f"-> Origen del papel configurado como: {config.SCAN_SOURCE} (Valor: {source_val})")
             
-            # Configurar Pages (3096) - 1 para que devuelva una por una
-            if prop.PropertyID == 3096 and source_val == 1:
+            # Configurar Pages (3096) - 1 para que devuelva una por una en cualquier modo de alimentador (1=Feeder, 4=Duplex, 5=Feeder+Duplex)
+            if prop.PropertyID == 3096 and source_val in (1, 4, 5):
                 try:
                     prop.Value = 1
                 except:
@@ -260,7 +273,7 @@ def configure_scanner_properties(scanner_item, root_device):
     except Exception as e:
         print(f"Advertencia: No se pudo configurar el origen del papel ({config.SCAN_SOURCE}). Error: {e}")
 
-    # 2. Configurar Propiedades de Calidad en el Item de Escaneo (DPI, Color)
+    # 2. Configurar Propiedades de Calidad en el Item de Escaneo (DPI, Color) y origen si está expuesto
     for prop in scanner_item.Properties:
         if prop.PropertyID == 6146: # WIA_IPS_CUR_INTENT
             try: prop.Value = config.SCAN_COLOR_MODE
@@ -270,6 +283,9 @@ def configure_scanner_properties(scanner_item, root_device):
             except: pass
         elif prop.PropertyID == 6148: # WIA_IPS_YRES
             try: prop.Value = config.SCAN_DPI
+            except: pass
+        elif prop.PropertyID in (3088, 4103): # Configurar origen en el ítem si el driver lo expone
+            try: prop.Value = source_val
             except: pass
 
 def has_paper_in_feeder(root_device):
@@ -309,6 +325,10 @@ def trigger_scan():
 
     scanned_files = []
     scan_source = config.SCAN_SOURCE  # "ADF" o "FLATBED"
+    if str(scan_source).isdigit():
+        source_val = int(scan_source)
+    else:
+        source_val = 1 if scan_source == "ADF" else 2
     max_retries = 3
     
     def connect_scanner():
@@ -323,6 +343,36 @@ def trigger_scan():
             raise RuntimeError("No se pudo obtener la información de conexión del dispositivo.")
         return dev_info.Connect()
 
+    def select_scanner_item(scanner_device, source):
+        """Busca el sub-ítem WIA correspondiente a ADF o Flatbed usando categorías WIA 2.0."""
+        WIA_CATEGORY_FLATBED = "{DEB50B54-3501-452A-B948-ABF0D151240F}"
+        WIA_CATEGORY_FEEDER = "{FE179EF7-22B2-4139-9FA4-FB0F167AF730}"
+        
+        if scanner_device.Items.Count <= 1:
+            return scanner_device.Items.Item(1)
+            
+        for i in range(1, scanner_device.Items.Count + 1):
+            item = scanner_device.Items.Item(i)
+            category = ""
+            try:
+                for prop in item.Properties:
+                    if prop.PropertyID == 4098: # WIA_IPA_ITEM_CATEGORY
+                        category = str(prop.Value).upper()
+                        break
+            except Exception:
+                pass
+            
+            if source == "ADF" and WIA_CATEGORY_FEEDER in category:
+                print(f"  -> Seleccionado sub-ítem {i} correspondiente a Alimentador ADF (Categoría WIA).")
+                return item
+            elif source == "FLATBED" and WIA_CATEGORY_FLATBED in category:
+                print(f"  -> Seleccionado sub-ítem {i} correspondiente a Vidrio/Flatbed (Categoría WIA).")
+                return item
+                
+        # Fallback al Item 1
+        print("  -> No se encontró sub-ítem por categoría. Utilizando sub-ítem 1 por defecto.")
+        return scanner_device.Items.Item(1)
+
     try:
         print("Estableciendo conexión con el escáner...")
         scanner = connect_scanner()
@@ -331,17 +381,17 @@ def trigger_scan():
         if scanner.Items.Count == 0:
             raise RuntimeError("El escáner no contiene ítems de escaneo.")
             
-        scanner_item = scanner.Items.Item(1)
+        scanner_item = select_scanner_item(scanner, scan_source)
         configure_scanner_properties(scanner_item, scanner)
         
         page_num = 1
         print("\nIniciando secuencia de escaneo masivo...")
         
         while True:
-            if scan_source == "ADF" and not has_paper_in_feeder(scanner):
-                print("La bandeja del alimentador automático (ADF) está vacía.")
-                break
-                
+            # Se elimina la comprobación anticipada del sensor físico (has_paper_in_feeder),
+            # ya que muchos controladores WIA de red (incluyendo el de Ricoh) reportan valores imprecisos
+            # para la propiedad 3087, arrojando falsos negativos. Dejamos que el primer intento de Transfer()
+            # intente jalar el papel físicamente y, si está vacío, se gestione a través de su excepción de red WIA.
             print(f"Escaneando página {page_num}...")
             
             image = None
@@ -350,9 +400,9 @@ def trigger_scan():
             for attempt in range(1, max_retries + 1):
                 try:
                     guids_to_try = [
-                        "{B96B3CAE-0728-11D3-9D7B-0000F81EF32E}", # JPG
-                        "{B96B3CAB-0728-11D3-9D7B-0000F81EF32E}", # BMP
-                        "{B96B3CB1-0728-11D3-9D7B-0000F81EF32E}"  # TIFF
+                        "{B96B3CAB-0728-11D3-9D7B-0000F81EF32E}", # BMP (Recomendado para compatibilidad WIA/WSD)
+                        "{B96B3CB1-0728-11D3-9D7B-0000F81EF32E}", # TIFF
+                        "{B96B3CAE-0728-11D3-9D7B-0000F81EF32E}"  # JPG
                     ]
                     
                     for guid in guids_to_try:
@@ -373,12 +423,12 @@ def trigger_scan():
                     is_efail = "2147467259" in err_str or "e_fail" in err_str or "no especificado" in err_str
                     
                     if is_efail and attempt < max_retries:
-                        print(f"  ⚠ Intento {attempt}/{max_retries} falló (E_FAIL). Reconectando al escáner...")
+                        print(f"  [WARN] Intento {attempt}/{max_retries} falló (E_FAIL). Reconectando al escáner...")
                         time.sleep(2)
                         try:
                             scanner = connect_scanner()
                             if scanner.Items.Count > 0:
-                                scanner_item = scanner.Items.Item(1)
+                                scanner_item = select_scanner_item(scanner, scan_source)
                                 configure_scanner_properties(scanner_item, scanner)
                         except Exception:
                             pass
@@ -417,7 +467,7 @@ def trigger_scan():
                 if os.path.exists(temp_path): os.remove(temp_path)
                 page_num += 1
                 
-                if scan_source == "FLATBED":
+                if scan_source == "FLATBED" or source_val == 2:
                     # En modo Flatbed interactivo, preguntar si quiere seguir
                     cont = input("¿Colocar otra hoja en el vidrio y escanear? (s/n): ").strip().lower()
                     if cont != "s":
@@ -425,7 +475,7 @@ def trigger_scan():
                     # Reconectar para cada página en Flatbed
                     try:
                         scanner = connect_scanner()
-                        scanner_item = scanner.Items.Item(1)
+                        scanner_item = select_scanner_item(scanner, scan_source)
                         configure_scanner_properties(scanner_item, scanner)
                     except Exception as rc_err:
                         print(f"Error al reconectar para la siguiente página: {rc_err}")
@@ -442,7 +492,7 @@ def trigger_scan():
                     print(f"\n[!] ERROR DE RED/DRIVER E_FAIL (-2147467259) DESPUÉS DE {max_retries} REINTENTOS [!]")
                     print("El escáner Ricoh rechazó la petición de Pull Scan desde el ADF.")
                     
-                    if scan_source == "ADF":
+                    if scan_source == "ADF" or source_val in (1, 4, 5):
                         print("\nOpciones:")
                         print("  1. Reintentar con ADF (quizás alguien liberó el panel)")
                         print("  2. Cambiar a modo VIDRIO (Flatbed) - escanear hoja por hoja")
@@ -453,7 +503,7 @@ def trigger_scan():
                             print("Reconectando para reintentar con ADF...")
                             try:
                                 scanner = connect_scanner()
-                                scanner_item = scanner.Items.Item(1)
+                                scanner_item = select_scanner_item(scanner, scan_source)
                                 configure_scanner_properties(scanner_item, scanner)
                             except Exception:
                                 pass
@@ -465,7 +515,7 @@ def trigger_scan():
                             scan_source = "FLATBED"
                             try:
                                 scanner = connect_scanner()
-                                scanner_item = scanner.Items.Item(1)
+                                scanner_item = select_scanner_item(scanner, scan_source)
                                 # Configurar como Flatbed (valor 2)
                                 for prop in scanner.Properties:
                                     if prop.PropertyID == 3088:
@@ -480,11 +530,12 @@ def trigger_scan():
                         else:
                             print("Escaneo abortado por el usuario.")
                     
-                elif "80210015" in err_str or "vacio" in err_str or "paper empty" in err_str or "2145320957" in err_str or "alimentador" in err_str:
+                elif any(x in err_str for x in ["80210015", "vacio", "paper empty", "2145320957", "alimentador", "2145320946", "8021000e"]):
                     if page_num > 1:
                         print("El ADF se ha quedado sin páginas (Escaneo masivo finalizado).")
                     else:
-                        print("\n⚠ La bandeja del alimentador automático (ADF) está vacía.")
+                        print("\n[!] La bandeja del alimentador automático (ADF) está vacía o el sensor no la detecta.")
+                        print(f"  Detalle técnico del error: {last_err}")
                         print("  Coloque los documentos en el ADF e intente nuevamente (Opción 4).")
                 elif "conflicto (409)" in err_str and page_num == 1:
                     print("El escaner indica Conflicto (409). Asegúrese de que haya papel en la bandeja ADF.")

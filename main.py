@@ -26,9 +26,10 @@ def print_menu():
         provider_str = f"VLM Local ({config.VLM_MODEL})"
     print(f" 5. Procesar Imágenes Escaneadas (Paso 2 - {provider_str})")
     
-    print(" 6. Mostrar Configuración Actual (.env)")
-    print(" 7. Gestionar Servicio Ollama (VLM Local)")
-    print(" 8. Salir")
+    print(" 6. Sincronizar Remitos desde Finnegans (ERP)")
+    print(" 7. Mostrar Configuración Actual (.env)")
+    print(" 8. Gestionar Servicio Ollama (VLM Local)")
+    print(" 9. Salir")
     print("=" * 50)
 
 def manage_ollama():
@@ -148,7 +149,12 @@ def main():
     # Asegurar que se cargue la configuración e imprima al inicio
     config.print_config()
     
+    import importlib
     while True:
+        # Recargar en caliente config y scanner por si se editó el .env de fondo
+        importlib.reload(config)
+        importlib.reload(scanner)
+        
         print_menu()
         choice = input("Seleccione una opción (1-8): ").strip()
         
@@ -222,16 +228,28 @@ def main():
                 print(f"Error durante el reconocimiento de imágenes: {e}")
                 
         elif choice == "6":
+            print("\n" + "-" * 50)
+            print(" EJECUTANDO SINCRONIZACIÓN DE REMITOS DESDE FINNEGANS")
+            print("-" * 50)
+            try:
+                # Ejecutar el script sync_remitos.py en su propio proceso de Python
+                subprocess.run([sys.executable, "sync_remitos.py"], check=True)
+            except subprocess.CalledProcessError as e:
+                print(f"\nError al ejecutar la sincronización: {e}")
+            except Exception as e:
+                print(f"\nError inesperado: {e}")
+                
+        elif choice == "7":
             config.print_config()
             
-        elif choice == "7":
+        elif choice == "8":
             manage_ollama()
             
-        elif choice == "8":
+        elif choice == "9":
             print("\nSaliendo del programa. ¡Hasta pronto!")
             sys.exit(0)
         else:
-            print("\nOpción no válida. Por favor, ingrese un número del 1 al 8.")
+            print("\nOpción no válida. Por favor, ingrese un número del 1 al 9.")
             
         input("\nPresione Enter para volver al menú...")
 
