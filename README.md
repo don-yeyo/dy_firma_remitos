@@ -104,9 +104,11 @@ Una vez configurado, este es el mejor driver ya que controla el alimentador de h
 3. **Verificar**: Ejecutar `python main.py`, Opción 2 para ver si el nuevo escáner aparece listado. Seleccionarlo para que quede guardado en `.env`.
 
 ### 3. Motor de Reconocimiento Óptico de Caracteres (Tesseract OCR)
-Para habilitar el paso 2 de extracción de textos del documento e incluirlos de forma estructurada en el JSON:
-1. Instale el motor de Tesseract. El instalador descargado se encuentra en la carpeta del proyecto en `drivers_win/tesseract-ocr-w64-setup-5.5.0.20241111.exe`. Puede ejecutarlo desde el menú del programa (Opción 1) o haciendo doble clic en él.
+Para habilitar el paso 2 de extracción de textos locales del documento e incluirlos de forma estructurada en el JSON:
+1. **Descargar e Instalar**: Dado que los instaladores binarios pesados están excluidos de Git para no saturar el repositorio, debés descargar el motor oficial de Tesseract para Windows:
+   * **Enlace de descarga oficial**: Descargá la versión estable de 64 bits (`tesseract-ocr-w64-setup-...exe`) desde la biblioteca de la Universidad de Mannheim en [UB Mannheim GitHub Wiki](https://github.com/UB-Mannheim/tesseract/wiki).
 2. **IMPORTANTE**: Durante la instalación, en el paso de selección de componentes, despliegue la sección **"Additional language data"** (Datos de idioma adicionales) y marque la opción **"Spanish"** (español) para habilitar el reconocimiento correcto de tildes y caracteres en español. También asegúrese de tener marcado "English".
+3. **Instalación de Drivers WIA**: Si la VM no cuenta con los controladores de Ricoh para WIA, descargá e instalá el controlador oficial de red WIA desde el portal de soporte oficial de Ricoh para tu modelo (ej. Ricoh IM C300).
 
 ---
 
