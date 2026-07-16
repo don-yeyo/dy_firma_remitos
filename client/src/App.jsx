@@ -129,7 +129,7 @@ function App() {
   
   // URL de la API local
   const [apiUrl, setApiUrl] = useState(() => {
-    return localStorage.getItem('dy_remitos_api_url') || 'http://localhost:8000';
+    return localStorage.getItem('dy_remitos_api_url') || import.meta.env.VITE_API_URL || 'http://localhost:8000';
   });
   const [isConfigOpen, setIsConfigOpen] = useState(false);
   const [tempApiUrl, setTempApiUrl] = useState(apiUrl);
