@@ -105,10 +105,13 @@ Una vez configurado, este es el mejor driver ya que controla el alimentador de h
 
 ### 3. Motor de Reconocimiento Óptico de Caracteres (Tesseract OCR)
 Para habilitar el paso 2 de extracción de textos locales del documento e incluirlos de forma estructurada en el JSON:
-1. **Descargar e Instalar**: Dado que los instaladores binarios pesados están excluidos de Git para no saturar el repositorio, debés descargar el motor oficial de Tesseract para Windows:
-   * **Enlace de descarga oficial**: Descargá la versión estable de 64 bits (`tesseract-ocr-w64-setup-...exe`) desde la biblioteca de la Universidad de Mannheim en [UB Mannheim GitHub Wiki](https://github.com/UB-Mannheim/tesseract/wiki).
+1. **Instalación de Tesseract OCR**:
+   * **Instalador local**: Podés ejecutar directamente el instalador oficial incluido en el proyecto en `drivers_win/tesseract-ocr-w64-setup-5.5.0.20241111.exe`.
+   * **Alternativa de descarga**: Si preferís descargar una versión más reciente, podés obtenerla desde [UB Mannheim GitHub Wiki](https://github.com/UB-Mannheim/tesseract/wiki).
 2. **IMPORTANTE**: Durante la instalación, en el paso de selección de componentes, despliegue la sección **"Additional language data"** (Datos de idioma adicionales) y marque la opción **"Spanish"** (español) para habilitar el reconocimiento correcto de tildes y caracteres en español. También asegúrese de tener marcado "English".
-3. **Instalación de Drivers WIA**: Si la VM no cuenta con los controladores de Ricoh para WIA, descargá e instalá el controlador oficial de red WIA desde el portal de soporte oficial de Ricoh para tu modelo (ej. Ricoh IM C300).
+3. **Instalación de Drivers Ricoh WIA**:
+   * **Controlador local**: Podés instalar el driver oficial incluido en el proyecto desde `drivers_win/Network WIA Driver scanner_z06624L20_WIA/`.
+   * **Alternativa de descarga**: También podés obtenerlo desde el portal oficial de Ricoh para tu modelo de multifunción (ej. Ricoh IM C300).
 
 ---
 
