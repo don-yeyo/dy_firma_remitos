@@ -10,6 +10,7 @@ from typing import List, Dict, Any, Optional
 
 # Cargar configuración centralizada del proyecto
 import config
+import state
 
 # Configuración de Logging
 os.makedirs("logs", exist_ok=True)
@@ -155,20 +156,27 @@ def parse_date_to_mysql(date_str: str) -> Optional[str]:
             return None
 
 def sync_remitos(fecha_desde: str, fecha_hasta: str):
-    """Sincroniza los remitos desde la API de Finnegans e inserta/actualiza en MySQL."""
+    """Sincroniza los remitos desde la API de Finnegans e inserta/actualiza en MySQL. Retorna diccionario de estadísticas."""
     # 1. Obtener remitos de Finnegans
     try:
+        state.update_progress(f"Solicitando reporte de remitos a Finnegans ERP (rango: {fecha_desde} al {fecha_hasta}). Por favor, espere...", 0, 0)
         api = FinnegansAPI()
         remitos = api.get_remitos_report(fecha_desde, fecha_hasta)
     except Exception as e:
         logger.critical(f"Abortando sincronización por fallo en la API de Finnegans: {e}")
-        sys.exit(1)
+        raise
         
     if not remitos:
         logger.info("No se encontraron remitos en el rango de fechas consultado.")
-        return
+        return {
+            "encontrados": 0,
+            "nuevos": 0,
+            "actualizados": 0,
+            "ignorados": 0
+        }
 
     # 2. Conectarse a la base de datos MySQL local
+    state.update_progress("Conexión exitosa con Finnegans ERP. Estableciendo enlace con MySQL...", 0, 0)
     logger.info(f"Conectándose a la base de datos MySQL en {config.DB_HOST}...")
     try:
         connection = pymysql.connect(
@@ -183,7 +191,7 @@ def sync_remitos(fecha_desde: str, fecha_hasta: str):
         logger.info("✔ Conexión establecida con éxito con la base de datos MySQL.")
     except Exception as e:
         logger.critical(f"No se pudo conectar a la base de datos MySQL: {e}")
-        sys.exit(1)
+        raise
 
     inserted_count = 0
     updated_count = 0
@@ -202,7 +210,16 @@ def sync_remitos(fecha_desde: str, fecha_hasta: str):
             total_to_process = len(remitos)
             logger.info(f"Iniciando procesamiento de los {total_to_process} remitos de Finnegans...")
             
+            # Inicializar progreso
+            state.update_progress(f"Iniciando sincronización de {total_to_process} remitos...", 0, total_to_process)
+            
             for index, item in enumerate(remitos, 1):
+                # Verificar si el usuario solicitó la cancelación del proceso
+                if state.is_cancel_requested():
+                    logger.warning("Cancelación detectada. Revirtiendo transacciones pendientes y deteniendo...")
+                    connection.rollback()
+                    raise state.ProcessCancelledException("Sincronización de remitos cancelada por el usuario.")
+
                 transaccion_id = item.get("TRANSACCIONID")
                 if not transaccion_id:
                     ignored_count += 1
@@ -265,20 +282,32 @@ def sync_remitos(fecha_desde: str, fecha_hasta: str):
                     existing_ids.add(transaccion_id)
                     inserted_count += 1
                 
-                # Realizar commits parciales y mostrar progreso cada 100 registros para mejorar respuesta y resiliencia
-                if index % 100 == 0 or index == total_to_process:
+                # Realizar commits parciales y mostrar progreso cada 10 registros
+                if index % 10 == 0 or index == total_to_process:
                     connection.commit()
+                    state.update_progress(
+                        f"Sincronizando remitos desde ERP: {index} de {total_to_process}...",
+                        index,
+                        total_to_process
+                    )
                     logger.info(f" -> Progreso: {index}/{total_to_process} remitos procesados. (Nuevos: {inserted_count}, Actualizados: {updated_count})")
-                    
+            
         logger.info(f"Sincronización finalizada con éxito. Resumen:")
         logger.info(f"  - Nuevos insertados: {inserted_count}")
         logger.info(f"  - Existentes actualizados: {updated_count}")
         logger.info(f"  - Omitidos/Ignorados: {ignored_count}")
         
+        return {
+            "encontrados": total_to_process,
+            "nuevos": inserted_count,
+            "actualizados": updated_count,
+            "ignorados": ignored_count
+        }
+        
     except Exception as e:
         connection.rollback()
         logger.error(f"Error de base de datos durante la sincronización: {e}")
-        sys.exit(1)
+        raise
     finally:
         connection.close()
 
@@ -308,8 +337,15 @@ def main():
     logger.info("======================================================================")
     logger.info(f"Rango de búsqueda calculado: Desde {fecha_desde} hasta {fecha_hasta}")
     
-    sync_remitos(fecha_desde, fecha_hasta)
-    logger.info("Proceso completado exitosamente.\n")
+    try:
+        sync_remitos(fecha_desde, fecha_hasta)
+        logger.info("Proceso completado exitosamente.\n")
+    except state.ProcessCancelledException:
+        logger.warning("Proceso cancelado por el usuario de forma limpia.\n")
+        sys.exit(0)
+    except Exception as e:
+        logger.critical(f"Fallo durante la ejecución: {e}\n")
+        sys.exit(1)
 
 if __name__ == "__main__":
     main()

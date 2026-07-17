@@ -209,11 +209,9 @@ h1, h2, h3 {
 @keyframes fadeIn {
   from {
     opacity: 0;
-    transform: translateY(10px);
   }
   to {
     opacity: 1;
-    transform: translateY(0);
   }
 }
 
@@ -663,6 +661,28 @@ h1, h2, h3 {
     display: inline-flex !important;
   }
 
+  .app-wrapper {
+    padding: 12px;
+    gap: 16px;
+  }
+
+  .tab-navigation {
+    width: 100% !important;
+    max-width: 90vw !important;
+    flex-wrap: wrap;
+    justify-content: center;
+    border-radius: 20px !important;
+    gap: 6px !important;
+    margin: 15px auto 20px auto !important;
+  }
+  
+  .tab-navigation button {
+    font-size: 12px !important;
+    padding: 8px 16px !important;
+    flex-grow: 1;
+    text-align: center;
+  }
+
   .app-header {
     height: auto;
     padding: 16px;
@@ -714,5 +734,69 @@ h1, h2, h3 {
   .action-card {
     padding: 20px;
   }
+
+  /* Historial responsivo: ocultar columnas secundarias en mobile */
+  .col-transaccion,
+  .col-fecha,
+  .col-ejemplares {
+    display: none !important;
+  }
+  
+  .history-table-wrapper {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Dashboard de estadísticas responsivo */
+  .stats-grid {
+    grid-template-columns: 1fr 1fr !important;
+  }
 }
+
+@media (max-width: 480px) {
+  .stats-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* Bloqueo de scroll para modal activo */
+body.modal-open {
+  overflow: hidden !important;
+}
+
+/* Estilos de la tabla de historial seleccionada */
+.history-table tbody tr.selected-row {
+  background-color: var(--surface-hover) !important;
+}
+
+.history-table tbody tr {
+  transition: background-color 0.2s ease;
+}
+
+.history-table tbody tr:hover {
+  background-color: var(--surface-hover);
+}
+
+.copia-dot {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  font-size: 10px;
+  font-weight: 800;
+  color: #fff;
+  user-select: none;
+}
+.copia-dot.present {
+  background-color: var(--success);
+  box-shadow: 0 0 4px rgba(16, 185, 129, 0.4);
+}
+.copia-dot.absent {
+  background-color: rgba(226, 232, 240, 0.2);
+  border: 1px dashed var(--border);
+  color: var(--text-muted);
+}
+
 

@@ -3,6 +3,7 @@ import time
 import win32com.client
 import pythoncom
 import config
+import state
 
 import win32print
 
@@ -388,6 +389,12 @@ def trigger_scan():
         print("\nIniciando secuencia de escaneo masivo...")
         
         while True:
+            if state.is_cancel_requested():
+                print("[WARN] Escaneo cancelado por solicitud del usuario.")
+                raise state.ProcessCancelledException("Escaneo cancelado por el usuario.")
+                
+            state.update_progress(f"Escaneando página {page_num}...", page_num, 0)
+            
             if page_num > 1:
                 # Darle tiempo al alimentador (ADF) físico de la Ricoh para terminar de acomodar
                 # la siguiente hoja antes de volver a solicitar la transferencia de red.
@@ -511,56 +518,19 @@ def trigger_scan():
                 elif "2147467259" in err_str or "e_fail" in err_str or "no especificado" in err_str:
                     print(f"\n[!] ERROR DE RED/DRIVER E_FAIL (-2147467259) DESPUÉS DE {max_retries} REINTENTOS [!]")
                     print("El escáner Ricoh rechazó la petición de Pull Scan desde el ADF.")
-                    
-                    if scan_source == "ADF" or source_val in (1, 4, 5):
-                        print("\nOpciones:")
-                        print("  1. Reintentar con ADF (quizás alguien liberó el panel)")
-                        print("  2. Cambiar a modo VIDRIO (Flatbed) - escanear hoja por hoja")
-                        print("  3. Abortar escaneo")
-                        fallback = input("Seleccione (1/2/3): ").strip()
-                        
-                        if fallback == "1":
-                            print("Reconectando para reintentar con ADF...")
-                            try:
-                                scanner = connect_scanner()
-                                scanner_item = select_scanner_item(scanner, scan_source)
-                                configure_scanner_properties(scanner_item, scanner)
-                            except Exception:
-                                pass
-                            continue
-                        elif fallback == "2":
-                            print("\n-> Cambiando a modo VIDRIO (Flatbed).")
-                            print("   Coloque la primera hoja sobre el vidrio del escáner y presione Enter.")
-                            input()
-                            scan_source = "FLATBED"
-                            try:
-                                scanner = connect_scanner()
-                                scanner_item = select_scanner_item(scanner, scan_source)
-                                # Configurar como Flatbed (valor 2)
-                                for prop in scanner.Properties:
-                                    if prop.PropertyID == 3088:
-                                        try:
-                                            prop.Value = 2
-                                        except:
-                                            pass
-                            except Exception as fb_err:
-                                print(f"Error al reconectar en modo Flatbed: {fb_err}")
-                                break
-                            continue
-                        else:
-                            print("Escaneo abortado por el usuario.")
-                    
+                    raise Exception("El escáner Ricoh rechazó la petición de Pull Scan desde el ADF (Error de red o hardware E_FAIL).")
                 elif any(x in err_str for x in ["80210015", "vacio", "paper empty", "2145320957", "alimentador", "2145320946", "8021000e"]):
                     if page_num > 1:
                         print("El ADF se ha quedado sin páginas (Escaneo masivo finalizado).")
                     else:
                         print("\n[!] La bandeja del alimentador automático (ADF) está vacía o el sensor no la detecta.")
-                        print(f"  Detalle técnico del error: {last_err}")
-                        print("  Coloque los documentos en el ADF e intente nuevamente (Opción 4).")
+                        raise Exception("La bandeja del alimentador automático (ADF) está vacía o no se detectan documentos.")
                 elif "conflicto (409)" in err_str and page_num == 1:
-                    print("El escaner indica Conflicto (409). Asegúrese de que haya papel en la bandeja ADF.")
+                    print("El escáner indica Conflicto (409). Asegúrese de que haya papel en la bandeja ADF.")
+                    raise Exception("Conflicto con el escáner (409). Verifique que haya papel en el alimentador ADF.")
                 else:
                     print(f"Finalizando o interrupción en el escaneo: {last_err}")
+                    raise Exception(f"Fallo durante el escaneo físico: {last_err}")
                 break
                 
         print(f"\nProceso finalizado. Total de páginas escaneadas: {len(scanned_files)}")

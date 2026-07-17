@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: #334155;
+            background-color: #f8fafc;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -4px rgba(0, 0, 0, 0.05);
+        }
+        .header {
+            background: linear-gradient(135deg, #0d2c5c 0%, #1e40af 100%);
+            color: #ffffff;
+            padding: 32px 24px;
+            text-align: center;
+        }
+        .header h2 {
+            margin: 0;
+            font-size: 24px;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+        }
+        .header p {
+            margin: 6px 0 0 0;
+            color: #93c5fd;
+            font-size: 13px;
+            font-weight: 500;
+        }
+        .content {
+            padding: 32px;
+            line-height: 1.6;
+        }
+        .greeting {
+            font-size: 18px;
+            font-weight: 700;
+            color: #0d2c5c;
+            margin-bottom: 16px;
+        }
+        .text {
+            font-size: 14px;
+            color: #475569;
+            margin-bottom: 24px;
+        }
+        .table-info {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 28px 0;
+            background-color: #f8fafc;
+            border-radius: 12px;
+            overflow: hidden;
+            border: 1px solid #f1f5f9;
+        }
+        .table-info td {
+            padding: 14px 16px;
+            border-bottom: 1px solid #f1f5f9;
+            font-size: 14px;
+        }
+        .table-info tr:last-child td {
+            border-bottom: none;
+        }
+        .table-info td.label {
+            font-weight: 600;
+            color: #64748b;
+            width: 160px;
+        }
+        .table-info td.value {
+            color: #0f172a;
+            font-weight: 500;
+        }
+        .alert-box {
+            background-color: #fffbeb;
+            border-left: 4px solid #f59e0b;
+            padding: 16px 20px;
+            border-radius: 8px;
+            margin-bottom: 28px;
+            font-size: 13.5px;
+            color: #78350f;
+            line-height: 1.5;
+        }
+        .alert-box strong {
+            color: #92400e;
+        }
+        .footer {
+            background-color: #f8fafc;
+            padding: 20px;
+            text-align: center;
+            font-size: 11px;
+            color: #94a3b8;
+            border-top: 1px solid #f1f5f9;
+            line-height: 1.4;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h2>Don Yeyo S.A.</h2>
+            <p>Auditoría y Control de Recepción de Mercadería</p>
+        </div>
+        <div class="content">
+            <div class="greeting">Estimado Cliente,</div>
+            <div class="text">
+                Nos comunicamos desde el departamento de Administración de <strong>Don Yeyo S.A.</strong> con el objeto de solicitarle la regularización del siguiente remito de entrega. A la fecha, nuestro sistema de auditoría no registra la firma conforme de recepción del mismo:
+            </div>
+            
+            <table class="table-info">
+                <tr>
+                    <td class="label">Razón Social:</td>
+                    <td class="value">{{CLIENTE}} (Cod: {{CODIGO_CLIENTE}})</td>
+                </tr>
+                <tr>
+                    <td class="label">Nro Comprobante:</td>
+                    <td class="value"><strong>{{NUMERO_REMITO}}</strong></td>
+                </tr>
+                <tr>
+                    <td class="label">Fecha de Emisión:</td>
+                    <td class="value">{{FECHA}}</td>
+                </tr>
+                <tr>
+                    <td class="label">ID de Transacción:</td>
+                    <td class="value" style="font-family: monospace; font-size: 13px;">{{TRANSACCION_ID}}</td>
+                </tr>
+                <tr>
+                    <td class="label">Detalle/Leyenda:</td>
+                    <td class="value">{{DESCRIPCION}}</td>
+                </tr>
+                <tr>
+                    <td class="label">Importe Total:</td>
+                    <td class="value" style="font-weight: 700; color: #0d2c5c;">$ {{IMPORTE}}</td>
+                </tr>
+            </table>
+
+            <div class="alert-box">
+                <strong>Instrucciones:</strong> Si usted ya cuenta con el remito firmado (ya sea por duplicado, triplicado o cuatriplicado), le solicitamos que nos envíe una foto o copia digitalizada en respuesta a este correo electrónico para poder registrar la conformidad y cerrar la auditoría pendiente.
+            </div>
+            
+            <div class="text" style="margin-bottom: 0;">
+                Agradecemos enormemente su colaboración para agilizar la gestión administrativa de los comprobantes.
+            </div>
+        </div>
+        <div class="footer">
+            Este es un aviso automático generado por el sistema de Firma de Remitos de Don Yeyo S.A.<br>
+            Por consultas administrativas, por favor responda a este email.
+        </div>
+    </div>
+</body>
+</html>

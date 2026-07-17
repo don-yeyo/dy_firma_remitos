@@ -26,6 +26,40 @@ El flujo de control de remitos tradicional requiere la revisión visual manual d
 
 ---
 
+## Funcionalidades y Mejoras Recientes
+
+La plataforma ha evolucionado sumando robustez administrativa y de auditoría mediante las siguientes implementaciones:
+
+### 1. 📊 Dashboard de Métricas y Control
+*   **KPIs en Tiempo Real**: Tarjetas analíticas con cálculos del volumen de remitos totales, firmas conformadas, porcentaje de eficiencia de entrega, alertas y reclamos enviados.
+*   **Top 10 de Clientes Deudores**: Listado inteligente que agrupa a los clientes deudores de firmas utilizando los primeros 30 caracteres de su razón social. Esto consolida de manera automática sucursales operativas pertenecientes a una misma entidad (por ejemplo, sucursales de *"Cooperativa Obrera"*), informando de forma verídica quién posee deudas de firmas. Incluye tratamiento de valores `NULL` en base de datos para no omitir comprobantes recién ingresados.
+
+### 2. 📱 Interfaz Responsiva Adaptable (Mobile First)
+*   **Historial Optimizado**: Grilla del historial de remitos totalmente rediseñada para celulares y tablets.
+*   **Ocultamiento Inteligente**: Oculta columnas de menor prioridad (Transacción ID, Fecha de Emisión, Ejemplares) en pantallas con un ancho inferior a 768px, manteniéndolas accesibles y editables a través de la Ficha de Detalle (icono de lápiz) de cada comprobante.
+
+### 3. 📧 Flujo Interactivo de Reclamo de Firmas
+*   **Integración con Finnegans ERP**: Mediante la API de clientes, el sistema resuelve automáticamente en tiempo real los correos electrónicos del cliente a partir de su código, utilizándolos como destinatarios principales.
+*   **Pantalla Completa de Preparación de Campañas**: Al presionar *"Enviar Reclamos"*, la aplicación pasa a una pantalla dedicada y limpia sin elementos flotantes:
+    *   **Envío Único**: Permite editar destinatarios principales, destinatarios en copia (CC definidos en la variable de entorno `EMAIL_DESTINATARIOS`), el Asunto y el código HTML del cuerpo del correo. Cuenta con solapas para alternar entre "Código editable" (HTML) y "Vista previa" (un iframe que renderiza el email en tiempo real).
+    *   **Envío Masivo (Bulk)**: Previsualiza el borrador genérico con comodines (`{{CLIENTE}}`, `{{NUMERO_REMITO}}`, `{{IMPORTE}}`) y deshabilita la edición manual de la casilla de destinatarios mostrando el comodín `{emails_extraidos_del_cliente}` (para evitar envíos cruzados accidentales). Al confirmar, el backend procesa de forma individual cada correo resolviendo sus emails desde Finnegans ERP y despachando los SMTP.
+    *   **Leyenda de Plantilla**: Indica de forma sutil la ruta física del archivo base del servidor (`server/templates/reclamo_template.html`).
+
+### 4. 🔍 Visualizador de Comprobantes Escaneados
+*   **Pantalla Completa Dedicada**: Permite visualizar la imagen digitalizada del remito en un contenedor limpio.
+*   **Control de Zoom**: Incluye controles interactivos para ampliar (`+`), reducir (`-`) y restaurar la escala original (`100%`) de la imagen.
+*   **Detección de Enlaces SharePoint**: Identifica si la ruta del remito escaneado es una dirección web absoluta (por ejemplo, a SharePoint) sirviéndola de forma directa sin anteponerle la URL del servidor local de desarrollo.
+*   **Despacho SMTP con Copias CC**: Permite enviar el escaneo al cliente, precargando de forma automática sus correos desde Finnegans ERP, y enviando copia (CC) a los correos definidos en la variable `EMAIL_DESTINATARIOS`.
+
+### 5. 🔀 Ordenamiento desde el Servidor (Server-Side Sorting)
+*   **Cabeceras Clickeables**: Permite ordenar de forma alfabética ascendente o descendente cada columna del historial haciendo clic en los títulos.
+*   **Seguridad SQL**: Las peticiones pasan parámetros `sort_field` y `sort_dir`. El backend valida y mapea estos campos contra una lista blanca cerrada de columnas MySQL antes de construir la consulta, eliminando todo riesgo de inyección de código SQL.
+
+### 6. 🛠️ Robustez del Backend (Concurrencia en DualStream)
+*   **Seguridad Multihilo**: Implementación de controles preventivos en el gestor `DualStream` para evitar excepciones `AttributeError` cuando hilos secundarios (como trabajadores de correos SMTP en background) escriben en consola después de que el hilo principal haya finalizado y cerrado el log físico del proceso actual.
+
+---
+
 ## Estructura del Proyecto
 
 El proyecto sigue una arquitectura **cliente/servidor desacoplada** optimizada para despliegues locales rápidos en PC/VM y publicación de frontend en la nube (Netlify):

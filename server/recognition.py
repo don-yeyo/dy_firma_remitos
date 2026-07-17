@@ -13,6 +13,7 @@ from dotenv import load_dotenv
 
 
 import config
+import state
 
 load_dotenv()
 
@@ -618,6 +619,59 @@ class DocumentProcessor:
             self.log_processing(file_name, f"Error: {str(e)}")
             return None
 
+    def _write_lote_summary(self, db_results):
+        if not db_results:
+            return
+        # Gestionar número de lote incremental
+        lote_file = os.path.join(config.PARSED_DIR, "lote_counter.txt")
+        lote_num = 1
+        try:
+            if os.path.exists(lote_file):
+                with open(lote_file, "r", encoding="utf-8") as lf:
+                    content = lf.read().strip()
+                    if content.isdigit():
+                        lote_num = int(content) + 1
+            os.makedirs(os.path.dirname(lote_file), exist_ok=True)
+            with open(lote_file, "w", encoding="utf-8") as lf:
+                lf.write(str(lote_num))
+        except Exception as e:
+            print(f"Advertencia al gestionar contador de lotes: {e}")
+            
+        # Imprimir resumen de detección de firmas solicitado
+        print("\n" + "=" * 50)
+        print("RESUMEN DE DETECCION DE FIRMAS")
+        print(f"Fecha: {datetime.now().strftime('%Y-%m-%d')}")
+        print(f"Lote: {lote_num}")
+        print("=" * 50)
+        
+        for r in db_results:
+            print()
+            num_remito = r.get("numero_remito", "Desconocido")
+            tx_id = r.get("transaccion_id")
+            
+            if not r.get("encontrado", False):
+                tx_str = str(tx_id) if tx_id else "Desconocido"
+                print(f"Nro Remito {num_remito}")
+                print(f"❌ No se encontró en DB con TransaccionID {tx_str}")
+            else:
+                copias = r.get("copias", 2)
+                conf_cliente = r.get("confirmado_cliente")
+                conf_dist = r.get("confirmado_distribuidor")
+                
+                # Formatear cliente/operador
+                if copias == 2:
+                    op_status = "(no se requiere)"
+                else:
+                    op_status = "Sí" if conf_cliente else "No"
+                    
+                # Formatear distribuidor
+                dist_status = "Sí" if conf_dist else "No"
+                
+                print(f"Nro Remito {num_remito}")
+                print(f"Firmado por Operador: {op_status}")
+                print(f"Firmado por Distribuidor: {dist_status}")
+        print("\n" + "=" * 50)
+
     def process_all_scans(self):
         """Busca todas las imágenes no procesadas en el directorio de salida y las analiza con el proveedor de IA configurado."""
         print(f"Escaneando directorio de salida para procesamiento AI: {config.SCAN_OUTPUT_DIR}")
@@ -625,7 +679,13 @@ class DocumentProcessor:
         valid_extensions = (".jpg", ".jpeg", ".png", ".bmp")
         if not os.path.exists(config.SCAN_OUTPUT_DIR):
             print(f"El directorio de escaneos no existe: {config.SCAN_OUTPUT_DIR}")
-            return
+            return {
+                "escaneados": 0,
+                "exitosasIa": 0,
+                "fallidosIa": 0,
+                "bdActualizados": 0,
+                "bdNoEncontrados": 0
+            }
             
         all_files = os.listdir(config.SCAN_OUTPUT_DIR)
         processed_set = self.get_processed_images()
@@ -638,73 +698,67 @@ class DocumentProcessor:
         
         if not files_to_process:
             print("No se encontraron nuevas imágenes escaneadas para procesar.")
-            return
+            return {
+                "escaneados": 0,
+                "exitosasIa": 0,
+                "fallidosIa": 0,
+                "bdActualizados": 0,
+                "bdNoEncontrados": 0
+            }
             
-        print(f"Se encontraron {len(files_to_process)} nuevas imágenes para analizar con {self.provider.upper()}.")
+        total_files = len(files_to_process)
+        print(f"Se encontraron {total_files} nuevas imágenes para analizar con {self.provider.upper()}.")
 
         db_results = []
-        for file_path in files_to_process:
-            result = self.process_document(file_path)
-            if result:
-                print(f"  -> {os.path.basename(file_path)}: Procesado exitosamente.")
-                if "db_status" in result and result["db_status"]:
-                    db_results.append(result["db_status"])
-            else:
-                db_results.append({
-                    "numero_remito": "Desconocido",
-                    "transaccion_id": "Error al procesar",
-                    "encontrado": False,
-                    "error_msg": "Excepción en procesamiento del documento"
-                })
-            print("-" * 40)
-            
-        if db_results:
-            # Gestionar número de lote incremental
-            lote_file = os.path.join(config.PARSED_DIR, "lote_counter.txt")
-            lote_num = 1
-            try:
-                if os.path.exists(lote_file):
-                    with open(lote_file, "r", encoding="utf-8") as lf:
-                        content = lf.read().strip()
-                        if content.isdigit():
-                            lote_num = int(content) + 1
-                os.makedirs(os.path.dirname(lote_file), exist_ok=True)
-                with open(lote_file, "w", encoding="utf-8") as lf:
-                    lf.write(str(lote_num))
-            except Exception as e:
-                print(f"Advertencia al gestionar contador de lotes: {e}")
+        exitosas_ia = 0
+        fallidos_ia = 0
+        bd_actualizados = 0
+        bd_no_encontrados = 0
+        
+        # Inicializar progreso
+        state.update_progress(f"Iniciando análisis de {total_files} imágenes...", 0, total_files)
+
+        try:
+            for idx, file_path in enumerate(files_to_process, 1):
+                # Verificar si se solicitó la cancelación del proceso
+                if state.is_cancel_requested():
+                    print("[WARN] Procesamiento IA cancelado por solicitud del usuario.")
+                    raise state.ProcessCancelledException("Procesamiento IA cancelado por el usuario.")
+
+                state.update_progress(f"Procesando imagen {idx} de {total_files} con IA...", idx, total_files)
                 
-            # Imprimir resumen de detección de firmas solicitado
-            print("\n" + "=" * 50)
-            print("RESUMEN DE DETECCION DE FIRMAS")
-            print(f"Fecha: {datetime.now().strftime('%Y-%m-%d')}")
-            print(f"Lote: {lote_num}")
-            print("=" * 50)
-            
-            for r in db_results:
-                print()
-                num_remito = r.get("numero_remito", "Desconocido")
-                tx_id = r.get("transaccion_id")
-                
-                if not r.get("encontrado", False):
-                    tx_str = str(tx_id) if tx_id else "Desconocido"
-                    print(f"Nro Remito {num_remito}")
-                    print(f"❌ No se encontró en DB con TransaccionID {tx_str}")
+                result = self.process_document(file_path)
+                if result:
+                    exitosas_ia += 1
+                    print(f"  -> {os.path.basename(file_path)}: Procesado exitosamente.")
+                    if "db_status" in result and result["db_status"]:
+                        db_results.append(result["db_status"])
+                        r = result["db_status"]
+                        if r.get("encontrado", False):
+                            bd_actualizados += 1
+                        else:
+                            bd_no_encontrados += 1
                 else:
-                    copias = r.get("copias", 2)
-                    conf_cliente = r.get("confirmado_cliente")
-                    conf_dist = r.get("confirmado_distribuidor")
-                    
-                    # Formatear cliente/operador
-                    if copias == 2:
-                        op_status = "(no se requiere)"
-                    else:
-                        op_status = "Sí" if conf_cliente else "No"
-                        
-                    # Formatear distribuidor
-                    dist_status = "Sí" if conf_dist else "No"
-                    
-                    print(f"Nro Remito {num_remito}")
-                    print(f"Firmado por Operador: {op_status}")
-                    print(f"Firmado por Distribuidor: {dist_status}")
-            print("\n" + "=" * 50)
+                    fallidos_ia += 1
+                    db_results.append({
+                        "numero_remito": "Desconocido",
+                        "transaccion_id": "Error al procesar",
+                        "encontrado": False,
+                        "error_msg": "Excepción en procesamiento del documento"
+                    })
+                    bd_no_encontrados += 1
+                print("-" * 40)
+        except state.ProcessCancelledException:
+            # Escribir el reporte del lote de lo que se procesó antes de levantar
+            self._write_lote_summary(db_results)
+            raise
+            
+        self._write_lote_summary(db_results)
+        
+        return {
+            "escaneados": total_files,
+            "exitosasIa": exitosas_ia,
+            "fallidosIa": fallidos_ia,
+            "bdActualizados": bd_actualizados,
+            "bdNoEncontrados": bd_no_encontrados
+        }
