@@ -159,7 +159,7 @@ Si al visitar el dominio configurado en Netlify (ej. `https://regard-refused-res
 1. **El túnel es efímero y expiró**: Al ejecutar `cloudflared.exe tunnel --url http://localhost:8000` de forma rápida sin una cuenta de Cloudflare, se genera un subdominio temporal en `trycloudflare.com`. Cada vez que el túnel se detiene y se vuelve a iniciar en la VM local, **el subdominio previo es destruido** y Cloudflare genera uno completamente aleatorio nuevo (como `https://hobbies-focus-step-outsourcing.trycloudflare.com`).
 2. **El backend local no está corriendo**: Si el túnel de Cloudflare está activo pero el servidor FastAPI no está ejecutándose localmente en la VM (puerto `8000`), Cloudflare no encontrará dónde redirigir el tráfico y arrojará error.
 
-### Paso a Paso para Reactivar el Canal en la VM:
+### Paso a Paso para Reactivar el Canal Efímero en la VM:
 1. **Levantar el Backend**: Abra una terminal en la VM de Windows Server, navegue a la carpeta del proyecto y levante el servidor FastAPI local:
    ```powershell
    uv run python server/server.py
@@ -171,10 +171,122 @@ Si al visitar el dominio configurado en Netlify (ej. `https://regard-refused-res
 3. **Copiar la Nueva URL**: Ubique la línea en los logs de consola de Cloudflare que indica:
    `Your quick Tunnel has been created! Visit it at: https://xxxx-xxxx-xxxx.trycloudflare.com`
 4. **Configurar Netlify**:
-   * Ingrese al panel administrativo de Netlify de la app (`https://dy-firem.netlify.netlify/`).
+   * Ingrese al panel administrativo de Netlify de la app (`https://dy-firem.netlify.app/`).
    * Vaya a **Site Configuration** → **Environment variables**.
    * Modifique la variable `VITE_API_URL` ingresando la nueva URL obtenida (ej. `https://xxxx-xxxx-xxxx.trycloudflare.com`).
    * **IMPORTANTE**: Guarde los cambios y ejecute un redespliegue de la aplicación (Deploy Site) para que los archivos estáticos de React compilen con la nueva IP del backend.
+
+---
+
+### 🔒 Cómo crear un Túnel Persistente (Named Tunnel) y Fijo
+
+Para evitar tener que reconfigurar la URL en Netlify y reiniciar el despliegue del frontend tras cada reinicio de la VM, puedes configurar un túnel persistente y asociarlo a un subdominio fijo (por ejemplo: `remitos-api.donyeyo.com.ar`).
+
+#### Opción A: Configuración Automática (Recomendada)
+Se provee un script interactivo de PowerShell en la raíz del proyecto para automatizar todo el proceso:
+1. Abre **PowerShell como Administrador** en la VM.
+2. Navega a la raíz del proyecto y ejecuta el script:
+   ```powershell
+   Set-ExecutionPolicy Bypass -Scope Process -Force
+   .\setup_cloudflare_tunnel.ps1
+   ```
+3. El script guiará el inicio de sesión, solicitará el subdominio, creará el túnel nombrado `dy-remitos-tunnel`, generará el archivo `config.yml` con el UUID en `C:\Users\Administrador\.cloudflared\`, creará el registro CNAME en las DNS de Cloudflare y dejará el túnel instalado y corriendo como un Servicio de Windows automático de fondo.
+
+---
+
+#### Opción B: Configuración Manual Paso a Paso
+En caso de requerir configuración manual, realiza los siguientes pasos en la VM:
+
+##### 1. Descarga e inicio de sesión:
+* Descarga la última versión de `cloudflared.exe` en la VM desde:
+  - **Enlace directo de GitHub (Windows 64-bit)**: [Descargar cloudflared-windows-amd64.exe](https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-windows-amd64.exe)
+  - **Listado completo de versiones**: [GitHub Releases Assets](https://github.com/cloudflare/cloudflared/releases/latest)
+  - **Alternativa mediante winget** (desde PowerShell de la VM):
+    ```powershell
+    winget install -e --id Cloudflare.cloudflared
+    ```
+* Corre en la consola de la VM (dependiendo de qué consola uses):
+  ```bash
+  # Si usas Git Bash / MINGW64 (recuerda usar barra inclinada /):
+  ../cloudflared.exe tunnel login    # si está en la carpeta de nivel superior
+  
+  # Si usas PowerShell / CMD (barra invertida \):
+  ..\cloudflared.exe tunnel login
+  ```
+* Se abrirá el navegador. Inicia sesión con la cuenta de Cloudflare de la empresa y selecciona el dominio que deseas autorizar (ej. `donyeyo.com.ar`). Esto descargará el certificado criptográfico de autorización `cert.pem` en tu máquina.
+
+##### 2. Crear el Túnel Nombrado:
+* Crea el túnel ejecutando el siguiente comando (puedes ponerle el nombre que quieras):
+  ```bash
+  # En Git Bash:
+  ../cloudflared.exe tunnel create dy-remitos-tunnel
+  
+  # En PowerShell / CMD:
+  ..\cloudflared.exe tunnel create dy-remitos-tunnel
+  ```
+* Copia el **UUID/ID único del túnel** generado (un string con guiones como `550e8400-e29b-41d4-a716-446655440000`) y la ruta al archivo JSON de credenciales creado en tu perfil de usuario de Windows.
+
+##### 3. Configurar el archivo de mapeo (config.yml):
+* Crea un archivo llamado `config.yml` en la carpeta donde tienes `cloudflared.exe` (o en `C:\Users\Administrador\.cloudflared\`) con el siguiente formato:
+  ```yaml
+  tunnel: <UUID-DEL-TUNEL>
+  credentials-file: C:\Users\Administrador\.cloudflared\<UUID-DEL-TUNEL>.json
+
+  ingress:
+    - hostname: remitos-api.donyeyo.com.ar
+      service: http://localhost:8000
+    - service: http_status:404
+  ```
+
+##### 4. Crear la ruta DNS en el panel de Cloudflare:
+* Asocia el subdominio con el túnel ejecutando:
+  ```bash
+  # En Git Bash:
+  ../cloudflared.exe tunnel route dns dy-remitos-tunnel remitos-api.donyeyo.com.ar
+
+  # En PowerShell / CMD:
+  ..\cloudflared.exe tunnel route dns dy-remitos-tunnel remitos-api.donyeyo.com.ar
+  ```
+* Esto generará de forma automática el registro CNAME seguro en las DNS de tu dominio en Cloudflare.
+
+##### 5. Probar e Instalar como Servicio de Windows (Arranque Automático Desatendido):
+* **Prueba manual en consola**:
+  Para probar el túnel manualmente en la terminal de la VM, debes pasarle explícitamente la ruta al archivo de configuración (`config.yml`). De lo contrario, `cloudflared` buscará en ubicaciones por defecto, no leerá las Ingress Rules de redirección al puerto `8000` y retornará un error 503 (No ingress rules defined):
+  ```bash
+  # En Git Bash:
+  ../cloudflared.exe --config C:/Users/Administrador/.cloudflared/config.yml tunnel run dy-remitos-tunnel
+  
+  # En PowerShell / CMD:
+  ..\cloudflared.exe --config C:\Users\Administrador\.cloudflared\config.yml tunnel run dy-remitos-tunnel
+  ```
+* **Instalar el servicio de Windows**:
+  Para que el túnel se inicie de fondo al encender la VM de Windows Server de forma automática, registra el servicio pasándole el archivo de configuración:
+  ```powershell
+  # Instalar servicio con config explícita (Ejecutar PowerShell como Administrador):
+  ..\cloudflared.exe --config C:\Users\Administrador\.cloudflared\config.yml service install
+  ```
+  > [!NOTE]
+  > Al correr como servicio bajo la cuenta de sistema `SYSTEM` (`LocalSystem`), Cloudflare busca las credenciales en el home del sistema. El comando de instalación copia los archivos correspondientes allí de forma automática. Si encuentras errores de ruteo al iniciar el servicio, asegúrate de copiar manualmente los archivos `config.yml` y `ff8b5686-1d34-4d8b-a2ee-83ef0a447b11.json` dentro del directorio:
+  > `C:\Windows\System32\config\systemprofile\.cloudflared\`
+
+* **Iniciar el servicio**:
+  ```powershell
+  Start-Service "Cloudflared"
+  ```
+
+---
+
+### 🛡️ Soluciones de Compatibilidad de Autenticación (Bypass local HTTP)
+
+Durante el despliegue local y de red LAN en la VM (`http://192.168.1.123:8000/`), se implementaron las siguientes mitigaciones para saltar limitaciones de seguridad de los navegadores modernos:
+
+1. **Bypass del error `crypto_nonexistent`**:
+   * **Causa**: La biblioteca de autenticación de Azure AD (MSAL.js) requiere que la Web Crypto API (`window.crypto`) esté disponible en el navegador. Por directivas de seguridad de Google Chrome/Edge/Safari, `window.crypto` **solo está disponible en contextos seguros** (HTTPS o localhost). Al entrar al backend usando la IP local de red (`http://192.168.1.123:8000/`), el navegador deshabilita `window.crypto` y MSAL.js arrojaba una excepción fatal no controlada que dejaba la pantalla en blanco.
+   * **Mitigación**: Se envolvió la instanciación de MSAL.js (`new PublicClientApplication`) en un bloque `try/catch`. En caso de capturar el error criptográfico, la aplicación se autoconfigura con un **Proxy de JavaScript** de compatibilidad. Este proxy intercepta dinámicamente cualquier llamada a métodos internos de MSAL (como `initializeWrapperLibrary`, `getLogger`, `clone` y clientes de navegación) y retorna funciones seguras vacías en lugar de lanzar excepciones de tipo `TypeError`.
+
+2. **Habilitación de Bypass de Mock en Producción (VM)**:
+   * **Causa**: Inicialmente el bypass de autenticación simulada (para operadores de escáner en red local sin conexión a internet) estaba restringido al entorno local de desarrollo (`DEV`). En la VM Server el frontend se sirve compilado bajo producción, por lo que ignoraba el mock e intentaba forzar la autenticación real contra Microsoft, arrojando advertencias en la IP LAN.
+   * **Mitigación**: Se liberó la restricción en `AuthContext.jsx`. Ahora, siempre que configures la variable de entorno `VITE_MOCK_AUTH=true` en tu archivo `.env`, la aplicación utilizará la autenticación simulada con el correo de `VITE_MOCK_AUTH_EMAIL` tanto en desarrollo como en la compilación de producción de la VM.
 
 ---
 
