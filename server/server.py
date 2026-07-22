@@ -344,6 +344,12 @@ def run_action_in_thread(action_name: str, status_type: str, logic_func, action_
                 print(f"[SYSTEM ERROR] Excepción en '{action_name}': {e}")
                 
             finally:
+                # Actualizar progreso a fase final antes de liberar el hilo
+                state.update_progress("Volcando datos y preparando resumen...", 98, 100)
+                time.sleep(1.0)
+                state.update_progress("Enviando reporte de auditoría por email...", 99, 100)
+                time.sleep(1.5)
+                
                 # 6. Devolver a idle y setear resultados si el ID de acción coincide
                 state.set_idle(last_result, action_id)
                 
