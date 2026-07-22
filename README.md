@@ -90,6 +90,169 @@ dy_firma_remitos/
 
 ---
 
+## 🗺️ Arquitectura de Red y Flujo de Despliegue
+
+El proyecto se despliega bajo una topología híbrida para sortear las restricciones del Firewall corporativo y permitir el control remoto del hardware LAN desde la nube pública:
+
+### Diagrama de Arquitectura Física y Conectividad
+
+```mermaid
+graph TD
+    subgraph Internet ["Internet (Nube Pública)"]
+        A["Cliente React (Netlify) <br> https://dy-firem.netlify.app/"]
+        AAD["Microsoft Entra ID <br> (Microsoft Auth)"]
+    end
+    subgraph Cloudflare ["Edge Network"]
+        CF["Cloudflare Tunnel <br> (*.trycloudflare.com)"]
+    end
+    subgraph Corporativo ["Red LAN Local (Don Yeyo S.A.)"]
+        VM["VM Windows Server <br> (FastAPI Backend - Port 8000)"]
+        R["Multifunción Ricoh IM C300 <br> (LAN IP / WIA Driver)"]
+    end
+    subgraph NubeTerceros ["Servicios Externos"]
+        DB["AWS RDS MySQL Database"]
+        ERP["Finnegans ERP API"]
+    end
+
+    A -->|1. Autentica con| AAD
+    A -->|2. Peticiones HTTPS| CF
+    CF -->|3. Proxy Reverso Seguro| VM
+    VM -->|4. Comando WIA Scan| R
+    VM -->|5. Guarda Auditoría| DB
+    VM -->|6. Sincroniza Remitos| ERP
+```
+
+### Diagrama de Secuencia: Autenticación e Integración de Firma
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Operador
+    participant App as Frontend (Netlify / https://dy-firem.netlify.app/)
+    participant AAD as Microsoft Entra ID (Auth)
+    participant CF as Cloudflare Tunnel (HTTPS FQDN)
+    participant VM as Backend (VM Local / FastAPI)
+    participant Ricoh as Multifunción Ricoh IM C300
+
+    Operador->>App: Ingresa al Frontend
+    App->>AAD: Redirecciona para Login Corporativo
+    AAD-->>App: Retorna Token JWT de Acceso (Usuario OK)
+    Operador->>App: Presiona "Escanear + Procesar Todo"
+    App->>CF: HTTP POST /api/scan-and-process (con Token)
+    Note over CF: El Túnel redirige de forma segura<br/>cruzando el firewall de la VM
+    CF->>VM: Reenvía petición a http://localhost:8000
+    VM->>Ricoh: Ejecuta escaneo WIA COM (ADF / SPDF)
+    Ricoh-->>VM: Retorna imágenes JPG del remito
+    Note over VM: Ejecuta OCR & VLM local o nube
+    VM-->>CF: Retorna JSON de resultados de firma y URLs
+    CF-->>App: Retorna respuesta al navegador
+    App-->>Operador: Muestra progreso y remitos digitalizados en pantalla
+```
+
+---
+
+## 🌐 Diagnóstico y Conectividad con Cloudflare Tunnel
+
+### ¿Por qué mi URL del túnel devuelve "Not Found"?
+Si al visitar el dominio configurado en Netlify (ej. `https://regard-refused-reservation-kennedy.trycloudflare.com`) se muestra un error **Not Found (404)** o **Bad Gateway (502)**, esto ocurre debido a dos razones principales:
+
+1. **El túnel es efímero y expiró**: Al ejecutar `cloudflared.exe tunnel --url http://localhost:8000` de forma rápida sin una cuenta de Cloudflare, se genera un subdominio temporal en `trycloudflare.com`. Cada vez que el túnel se detiene y se vuelve a iniciar en la VM local, **el subdominio previo es destruido** y Cloudflare genera uno completamente aleatorio nuevo (como `https://hobbies-focus-step-outsourcing.trycloudflare.com`).
+2. **El backend local no está corriendo**: Si el túnel de Cloudflare está activo pero el servidor FastAPI no está ejecutándose localmente en la VM (puerto `8000`), Cloudflare no encontrará dónde redirigir el tráfico y arrojará error.
+
+### Paso a Paso para Reactivar el Canal en la VM:
+1. **Levantar el Backend**: Abra una terminal en la VM de Windows Server, navegue a la carpeta del proyecto y levante el servidor FastAPI local:
+   ```powershell
+   uv run python server/server.py
+   ```
+2. **Iniciar el Túnel**: Abra otra terminal en la VM (donde tenga descargado el archivo `cloudflared.exe`) y levante el túnel efímero apuntando al puerto local `8000`:
+   ```powershell
+   .\cloudflared.exe tunnel --url http://localhost:8000
+   ```
+3. **Copiar la Nueva URL**: Ubique la línea en los logs de consola de Cloudflare que indica:
+   `Your quick Tunnel has been created! Visit it at: https://xxxx-xxxx-xxxx.trycloudflare.com`
+4. **Configurar Netlify**:
+   * Ingrese al panel administrativo de Netlify de la app (`https://dy-firem.netlify.netlify/`).
+   * Vaya a **Site Configuration** → **Environment variables**.
+   * Modifique la variable `VITE_API_URL` ingresando la nueva URL obtenida (ej. `https://xxxx-xxxx-xxxx.trycloudflare.com`).
+   * **IMPORTANTE**: Guarde los cambios y ejecute un redespliegue de la aplicación (Deploy Site) para que los archivos estáticos de React compilen con la nueva IP del backend.
+
+---
+
+## ⏰ Tarea Programada de Windows (Sincronización ERP 3:00 AM)
+
+Para realizar la descarga y sincronización de remitos facturados desde Finnegans ERP todas las noches de fondo, se provee un script automatizado para la VM local:
+
+1. **Uso del script de autoinstalación**:
+   * Busque el archivo [create_scheduled_task.bat](file:///c:/Users/gabrielt/Documents/Proyectos/Automatizaci%C3%B3nFirmaRemitos/dy_firma_remitos/create_scheduled_task.bat) en la raíz del proyecto.
+   * Haga clic derecho sobre él y seleccione **Ejecutar como Administrador**.
+   * El script detectará dinámicamente la ruta de la VM en la que se encuentra instalado el proyecto y registrará una tarea programada llamada `Sincronizador Remitos Don Yeyo` bajo el usuario del sistema `SYSTEM`.
+2. **Verificación**:
+   * Puede abrir el *Programador de Tareas* (`taskschd.msc`) de Windows Server y validar que la tarea figure activa para ejecutarse a las **03:00 AM** diariamente de forma desatendida y sin ventana de consola visible.
+   * Los registros de auditoría de este proceso se guardan diariamente en `server/logs/sync_remitos.log`.
+
+---
+
+## 🐳 Despliegue mediante Docker (Referencia Teórica)
+
+> [!WARNING]
+> La máquina virtual (VM) actual con Windows Server **no cuenta con soporte para Docker** debido a limitaciones físicas del sistema operativo de la oficina y la imposibilidad de activar virtualización anidada o WSL2. El despliegue de Python nativo descrito en la sección de VM es el método productivo actual.
+
+En caso de migrar a una infraestructura en la nube o VM compatible en el futuro, se detalla el flujo de Dockerización:
+
+### Dockerfile del Backend (`server/Dockerfile`)
+```dockerfile
+FROM python:3.10-slim
+
+# Instalar Tesseract OCR y dependencias del sistema
+RUN apt-get update && apt-get install -y \
+    tesseract-ocr \
+    tesseract-ocr-spa \
+    libgl1-mesa-glx \
+    libglib2.0-0 \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY . .
+
+EXPOSE 8000
+CMD ["python", "server.py"]
+```
+
+### Docker Compose de Referencia (`docker-compose.yml`)
+```yaml
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: ./server
+    ports:
+      - "8000:8000"
+    environment:
+      - DB_HOST=dydb2-instance-1...rds.amazonaws.com
+      - DB_NAME=Firma_de_remitos
+      - AI_PROVIDER=gemini
+    volumes:
+      - ./server/scanned_documents:/app/scanned_documents
+      - ./server/logs:/app/logs
+
+  frontend:
+    image: node:18-alpine
+    working_dir: /app
+    volumes:
+      - ./client:/app
+    ports:
+      - "5173:5173"
+    command: sh -c "npm install && npm run dev -- --host"
+    environment:
+      - VITE_API_URL=http://backend:8000
+```
+
+---
+
 ## Requisitos Previos
 
 ### 1. Sistema Operativo y Python

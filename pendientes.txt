@@ -1,0 +1,24 @@
+LISTA DE PENDIENTES - AUTOMATIZACIÓN FIRMA DE REMITOS (DON YEYO S.A.)
+=======================================================================
+
+Este archivo contiene la lista de mejoras, hitos de mantenimiento y tareas pendientes del proyecto de Firma de Remitos.
+
+1. MIGRACIÓN A TÚNEL DE CLOUDFLARE PERSISTENTE (NAMED TUNNEL)
+------------------------------------------------------------
+* Actualmente se utiliza un túnel efímero rápido ('trycloudflare.com') desde la VM local del servidor Windows. Esto genera un subdominio aleatorio temporal cada vez que se levanta la consola (ej. 'hobbies-focus-step-outsourcing.trycloudflare.com'), lo que obliga a reconfigurar manualmente la variable de entorno 'VITE_API_URL' en Netlify.
+* Pendiente: Configurar un Túnel Nombrado persistente con una cuenta de Cloudflare (gratuita), mapeando un dominio propio o subdominio estable (ej. 'remitos-api.donyeyo.com.ar') y configurando 'cloudflared' como un servicio nativo de Windows (usando 'cloudflared.exe service install') para arranque automático en la VM.
+
+2. INSTALACIÓN Y MONITOREO DE LA TAREA PROGRAMADA
+-------------------------------------------------
+* Se debe ejecutar el script 'create_scheduled_task.bat' con permisos de Administrador en la VM para registrar la sincronización diaria automática del ERP a las 3:00 AM.
+* Pendiente: Monitorear el archivo de registro físico en 'server/logs/sync_remitos.log' para asegurar que el proceso no aroje errores de autenticación con la API de Finnegans o fallos de timeout tras periodos prolongados sin actividad.
+
+3. MANTENIMIENTO DE CONEXIÓN DE IMPRESORA MULTIFUNCIÓN (RICOH WIA)
+-----------------------------------------------------------------
+* La comunicación física con la bandeja ADF de la Ricoh IM C300 depende de las interfaces nativas WIA COM de Windows en la VM.
+* Pendiente: Documentar la dirección IP estática configurada para el escáner Ricoh en la red LAN. En caso de fallas físicas de conexión, verificar que la impresora no haya cambiado de IP DHCP, o actualizar la IP en el puerto WIA en 'sticpl.cpl'.
+
+5. CONTROL DE ACCESO LOCAL DE BACKUP
+------------------------------------
+* Si el túnel de Cloudflare o la conexión a internet sufren una interrupción, los celulares no podrán acceder a Netlify para comandar el escaneo.
+* Pendiente: Configurar y dejar validado el acceso local de respaldo. Al correr el frontend compilado autocontenido ('npm run build-client'), el backend FastAPI sirve tanto el frontend como el backend localmente en el puerto 8000. Los operadores pueden ingresar directamente a 'http://192.168.1.123:8000' desde la red WiFi corporativa (desactivando la restricción de Mixed Content en Google Chrome del móvil si es necesario).
