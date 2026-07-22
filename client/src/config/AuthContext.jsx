@@ -22,17 +22,17 @@ export const AuthProvider = ({ children }) => {
                 avatar: null
             });
         } else {
-            // Solo limpiar si no estamos en bypass Mock de desarrollo local
-            if (!(import.meta.env.DEV && import.meta.env.VITE_MOCK_AUTH === 'true')) {
+            // Solo limpiar si no estamos en bypass Mock
+            if (import.meta.env.VITE_MOCK_AUTH !== 'true') {
                 setIsAuthenticated(false);
                 setUser(null);
             }
         }
     }, [isMsAuthenticated, accounts]);
 
-    // 2. BYPASS DE AUTENTICACION PARA DESARROLLO LOCAL
+    // 2. BYPASS DE AUTENTICACION
     useEffect(() => {
-        if (import.meta.env.DEV && import.meta.env.VITE_MOCK_AUTH === 'true') {
+        if (import.meta.env.VITE_MOCK_AUTH === 'true') {
             const mockEmail = import.meta.env.VITE_MOCK_AUTH_EMAIL;
 
             if (!mockEmail) {
