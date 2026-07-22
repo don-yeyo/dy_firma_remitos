@@ -7,13 +7,18 @@ echo Iniciando Sincronizacion de Remitos de Finnegans
 echo Fecha y hora: %date% %time%
 echo ======================================================================
 
-if not exist ".venv\Scripts\python.exe" (
-    echo [ERROR] No se encontro el entorno virtual en '.venv\Scripts\python.exe'.
-    echo Por favor, ejecuta 'uv venv' y luego instala las dependencias.
+set "VENV_PATH=.venv"
+if not exist "%VENV_PATH%\Scripts\python.exe" (
+    set "VENV_PATH=..\.venv"
+)
+
+if not exist "%VENV_PATH%\Scripts\python.exe" (
+    echo [ERROR] No se encontro el entorno virtual en '.venv\Scripts\python.exe' ni en '..\.venv\Scripts\python.exe'.
+    echo Por favor, ejecuta 'uv venv' e instala las dependencias.
     exit /b 1
 )
 
-".venv\Scripts\python.exe" sync_remitos.py
+"%VENV_PATH%\Scripts\python.exe" sync_remitos.py
 
 if %ERRORLEVEL% EQU 0 (
     echo [OK] Sincronizacion completada con exito.
