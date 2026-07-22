@@ -157,8 +157,23 @@ function App() {
           // El servidor finalizó el trabajo
           if (res.data.last_result) {
             setSummaryData(res.data.last_result);
+          } else if (actionStarted) {
+            // Si el frontend disparó una acción y esta finalizó, forzamos un resumen genérico de confirmación
+            setSummaryData({
+              success: true,
+              cancelled: false,
+              type: status,
+              message: "Proceso completado. Los datos han sido guardados.",
+              summary: {
+                escaneados: 0,
+                exitosasIa: 0,
+                fallidosIa: 0,
+                bdActualizados: 0,
+                bdNoEncontrados: 0
+              }
+            });
           } else {
-            // Si el servidor pasó a reposo pero no hay resultados, cerramos el modal
+            // Si el servidor pasó a reposo pero no hay resultados ni acción disparada, cerramos el modal
             setShowModal(false);
             setActionStarted(false);
           }
@@ -882,6 +897,12 @@ function App() {
     );
   }
 
+  // Flags para visibilidad de tarjetas de acción (por defecto true, se ocultan con 'false')
+  const mostrarEscanProcTodo = import.meta.env.VITE_MOSTRAR_ESCAN_PROC_TODO !== 'false';
+  const mostrarEscanMasivo = import.meta.env.VITE_MOSTRAR_ESCAN_MASIVO !== 'false';
+  const mostrarProcesarIa = import.meta.env.VITE_MOSTRAR_PROCESAR_IA !== 'false';
+  const mostrarActualizaRemitos = import.meta.env.VITE_MOSTRAR_ACTUALIZA_REMITOS !== 'false';
+
   // --- VISTA PRINCIPAL (DASHBOARD) ---
   return (
     <div className="app-wrapper">
@@ -929,7 +950,7 @@ function App() {
       {/* Modal Configuración IP */}
       {isConfigOpen && (
         <div style={{
-          position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh',
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, width: '100%', height: '100%',
           background: 'rgba(15, 23, 42, 0.75)', display: 'flex', alignItems: 'center',
           justifyContent: 'center', zIndex: 10000, padding: '20px'
         }}>
@@ -977,7 +998,7 @@ function App() {
       {/* MODAL DE PROGRESO Y RESUMEN A PANTALLA COMPLETA */}
       {showModal && (
         <div style={{
-          position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh',
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, width: '100%', height: '100%',
           background: 'rgba(15, 23, 42, 0.85)', display: 'flex', alignItems: 'center',
           justifyContent: 'center', zIndex: 10000, padding: '24px', backdropFilter: 'blur(12px)'
         }}>
@@ -1196,61 +1217,101 @@ function App() {
         // --- SECCIÓN: ACCIONES PRINCIPALES ---
         <main className="actions-section">
           {/* Flujo Completo */}
-          <div
-            className="action-card glass full-width"
-            onClick={() => handleAction('scan-and-process', 'Escanear + Procesar Todo')}
-          >
-            <div className="action-icon">
-              <Play size={20} />
+          {mostrarEscanProcTodo && (
+            <div
+              className="action-card glass full-width"
+              role="button"
+              tabIndex={0}
+              onClick={() => handleAction('scan-and-process', 'Escanear + Procesar Todo')}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  handleAction('scan-and-process', 'Escanear + Procesar Todo');
+                }
+              }}
+            >
+              <div className="action-icon">
+                <Play size={20} />
+              </div>
+              <div>
+                <h3>Escanear + Procesar Todo</h3>
+                <p>Jala los remitos del alimentador de la Ricoh, los digitaliza e inicia el análisis automático por IA para firmar en base de datos y SharePoint en un solo paso.</p>
+              </div>
             </div>
-            <div>
-              <h3>Escanear + Procesar Todo</h3>
-              <p>Jala los remitos del alimentador de la Ricoh, los digitaliza e inicia el análisis automático por IA para firmar en base de datos y SharePoint en un solo paso.</p>
-            </div>
-          </div>
+          )}
 
           {/* Paso 1: Escaneo */}
-          <div
-            className="action-card glass"
-            onClick={() => handleAction('scan', 'Escaneo Masivo (Paso 1)')}
-          >
-            <div className="action-icon">
-              <Printer size={18} />
+          {mostrarEscanMasivo && (
+            <div
+              className="action-card glass"
+              role="button"
+              tabIndex={0}
+              onClick={() => handleAction('scan', 'Escaneo Masivo (Paso 1)')}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  handleAction('scan', 'Escaneo Masivo (Paso 1)');
+                }
+              }}
+            >
+              <div className="action-icon">
+                <Printer size={18} />
+              </div>
+              <div>
+                <h3>Escaneo Masivo</h3>
+                <p>Paso 1: Jala los papeles de la bandeja física del escáner y los almacena en formato JPG.</p>
+              </div>
             </div>
-            <div>
-              <h3>Escaneo Masivo</h3>
-              <p>Paso 1: Jala los papeles de la bandeja física del escáner y los almacena en formato JPG.</p>
-            </div>
-          </div>
+          )}
 
           {/* Paso 2: Procesar IA */}
-          <div
-            className="action-card glass"
-            onClick={() => handleAction('process', 'Procesar Imágenes (Paso 2)')}
-          >
-            <div className="action-icon">
-              <Cpu size={18} />
+          {mostrarProcesarIa && (
+            <div
+              className="action-card glass"
+              role="button"
+              tabIndex={0}
+              onClick={() => handleAction('process', 'Procesar Imágenes (Paso 2)')}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  handleAction('process', 'Procesar Imágenes (Paso 2)');
+                }
+              }}
+            >
+              <div className="action-icon">
+                <Cpu size={18} />
+              </div>
+              <div>
+                <h3>Procesar por IA</h3>
+                <p>Paso 2: Analiza las imágenes digitalizadas en busca de firmas y sellos con IA.</p>
+              </div>
             </div>
-            <div>
-              <h3>Procesar por IA</h3>
-              <p>Paso 2: Analiza las imágenes digitalizadas en busca de firmas y sellos con IA.</p>
-            </div>
-          </div>
+          )}
 
           {/* Finnegans Sync */}
-          <div
-            className="action-card glass"
-            style={{ gridColumn: '1 / -1' }}
-            onClick={() => setShowSyncConfirmModal(true)}
-          >
-            <div className="action-icon">
-              <RefreshCw size={18} />
+          {mostrarActualizaRemitos && (
+            <div
+              className="action-card glass"
+              style={{ gridColumn: '1 / -1' }}
+              role="button"
+              tabIndex={0}
+              onClick={() => setShowSyncConfirmModal(true)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  setShowSyncConfirmModal(true);
+                }
+              }}
+            >
+              <div className="action-icon">
+                <RefreshCw size={18} />
+              </div>
+              <div>
+                <h3>Actualizar remitos desde ERP</h3>
+                <p>Sincroniza y descarga los nuevos remitos facturados en Finnegans a la base de datos de auditoría.</p>
+              </div>
             </div>
-            <div>
-              <h3>Actualizar remitos desde ERP</h3>
-              <p>Sincroniza y descarga los nuevos remitos facturados en Finnegans a la base de datos de auditoría.</p>
-            </div>
-          </div>
+          )}
         </main>
       ) : activeTab === 'history' ? (
         // --- SECCIÓN: HISTORIAL DE AUDITORÍA ---
@@ -1826,7 +1887,7 @@ function App() {
       {/* MODAL DE CONFIRMACIÓN DE SINCRONIZACIÓN DE FINNEGANS */}
       {showSyncConfirmModal && (
         <div style={{
-          position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh',
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, width: '100%', height: '100%',
           background: 'rgba(15, 23, 42, 0.85)', display: 'flex', alignItems: 'center',
           justifyContent: 'center', zIndex: 10000, padding: '24px', backdropFilter: 'blur(12px)'
         }}>
