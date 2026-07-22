@@ -29,12 +29,21 @@ try {
         setActiveAccount: () => {},
         loginRedirect: () => Promise.reject("Autenticación Microsoft no disponible en conexiones HTTP inseguras. Habilite HTTPS o configure un Túnel."),
         logoutRedirect: () => Promise.resolve(),
-        getLogger: () => ({ 
-            error: () => {}, 
-            warning: () => {}, 
-            info: () => {}, 
-            verbose: () => {} 
-        })
+        getNavigationClient: () => ({
+            navigateInternal: () => Promise.resolve(true),
+            navigateExternal: () => Promise.resolve(true),
+        }),
+        getLogger: () => {
+            const loggerInstance = {
+                error: () => {}, 
+                warning: () => {}, 
+                info: () => {}, 
+                verbose: () => {},
+                isLevel: () => false,
+                clone: () => loggerInstance
+            };
+            return loggerInstance;
+        }
     };
 }
 
