@@ -1,10 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 
-// Interceptor global: agrega el header requerido por ngrok (plan gratuito)
-// para saltar la página interstitial de advertencia en todas las peticiones.
+// Interceptor global: agrega el header de ngrok y la clave de autenticación X-API-Key
 axios.interceptors.request.use((config) => {
   config.headers['ngrok-skip-browser-warning'] = 'true';
+  const apiKey = import.meta.env.VITE_API_SECRET_KEY || 'dy_secret_remitos_2026_default_key';
+  if (apiKey) {
+    config.headers['X-API-Key'] = apiKey;
+  }
   return config;
 });
 import { useAuth } from './config/AuthContext';

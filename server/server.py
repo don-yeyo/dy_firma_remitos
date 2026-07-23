@@ -6,7 +6,8 @@ import glob
 import contextlib
 from datetime import datetime, timedelta
 import pymysql
-from fastapi import FastAPI, BackgroundTasks, Body
+from fastapi import FastAPI, BackgroundTasks, Body, Request
+from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -42,6 +43,29 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Middleware de Autenticación por Clave Secreta (X-API-Key)
+@app.middleware("http")
+async def verify_api_key(request: Request, call_next):
+    # Solicitudes OPTIONS (CORS Preflight) pasan sin verificar clave
+    if request.method == "OPTIONS":
+        return await call_next(request)
+
+    # Rutas públicas permitidas (documentación Swagger, esquemas, favicon)
+    public_paths = ["/docs", "/redoc", "/openapi.json", "/favicon.ico"]
+    if any(request.url.path == path or request.url.path.startswith(path + "/") for path in public_paths):
+        return await call_next(request)
+
+    # Verificar clave de API si está configurada
+    if config.API_SECRET_KEY:
+        incoming_key = request.headers.get("X-API-Key") or request.query_params.get("api_key")
+        if incoming_key != config.API_SECRET_KEY:
+            return JSONResponse(
+                status_code=401,
+                content={"detail": "Acceso no autorizado. Encabezado X-API-Key ausente o invalido."}
+            )
+
+    return await call_next(request)
 
 # Montar carpeta de documentos escaneados físicamente
 app.mount("/scanned_documents", StaticFiles(directory=config.SCAN_OUTPUT_DIR), name="scanned_documents")

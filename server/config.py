@@ -9,6 +9,9 @@ if not os.path.exists(env_path):
         env_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env")
 load_dotenv(env_path)
 
+# Clave secreta para autenticación de peticiones API (protección de backend expuesto)
+API_SECRET_KEY = os.getenv("API_SECRET_KEY", "dy_secret_remitos_2026_default_key")
+
 # Configuraciones y valores por defecto
 SCANNER_NAME = os.getenv("SCANNER_NAME", "RICOH IM C300")
 SCAN_OUTPUT_DIR = os.getenv("SCAN_OUTPUT_DIR", "scanned_documents")
