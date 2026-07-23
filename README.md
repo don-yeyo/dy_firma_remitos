@@ -245,6 +245,48 @@ Para realizar la descarga y sincronización de remitos facturados desde Finnegan
 
 ---
 
+## 📦 Herramienta de Importación de Datos Legacy (AppSheet / Google Sheets)
+
+Para migrar o actualizar los registros históricos de remitos provenientes del sistema anterior (AppSheet / Google Sheets), se incluye una herramienta automatizada de línea de comandos en `tools/importador_legacy/importar.py`.
+
+### 📂 Estructura de Directorios
+
+- `tools/importador_legacy/pendientes/`: Carpeta donde se depositan los archivos `.xlsx` a procesar (soporta nombres con espacios).
+- `tools/importador_legacy/importados/`: Carpeta a la que se mueven automáticamente los archivos `.xlsx` una vez finalizada la importación.
+
+### 🚀 Uso en Terminal
+
+1. **Importar todos los archivos `.xlsx` pendientes**:
+   ```bash
+   uv run python tools/importador_legacy/importar.py
+   ```
+
+2. **Filtrar registros a partir de una fecha específica** (`--desde` / `-d` en formato `YYYY-MM-DD`):
+   ```bash
+   uv run python tools/importador_legacy/importar.py --desde 2025-01-01
+   ```
+
+### ⚙️ Lógica de Mapeo y Persistencia
+
+- **Búsqueda por `TransaccionID`**: El importador busca cada fila en la base de datos MySQL (`remitos`) mediante `finne_transaccionID`.
+- **Inserción vs Actualización**: Si la transacción no existe en la base de datos, se realiza un `INSERT`. Si existe, se efectúa un `UPDATE` de los metadatos conservando la confirmación de firmas si la base de datos ya tenía confirmación previa (`bot_confirmado_cliente` / `bot_confirmado_distribuidor`).
+- **Mapeo de Cabeceras**:
+  - `TransaccionID` ➔ `finne_transaccionID`
+  - `Fecha` ➔ `finne_Fecha`
+  - `Cliente` ➔ `finne_Cliente`
+  - `Total` ➔ `finne_importe_total`
+  - `Comprobante` ➔ `finne_Comprobante`
+  - `Doc.Nro.Interno` ➔ `finne_DocNroInterno`
+  - `Firma Cliente` ➔ `bot_confirmado_cliente`
+  - `Firma Distribuidor` ➔ `bot_confirmado_distribuidor`
+  - `Descripcion` ➔ `finne_Descripcion`
+  - `Reclamado` ➔ `finne_Reclamado`
+  - `Fecha Ultimo reclamo` ➔ `finne_FechaUltimoReclamo`
+  - `CodigoCliente` ➔ `finne_CodigoCliente`
+  - `Cantidad de Copias` ➔ `finne_Copias`
+
+---
+
 ## 🐳 Despliegue mediante Docker (Referencia Teórica)
 
 > [!WARNING]
@@ -619,19 +661,19 @@ Si la VM ya cuenta con Python instalado y preferís correr el servidor directame
    ```
    *El servidor leerá tu configuración del `.env`, se conectará a la base de datos de AWS y quedará escuchando peticiones en todas las interfaces en el puerto `8000`.*
 
-#### E. Exposición Pública Fija con Serveo.net (Sin tocar DNS del Hosting)
+#### E. Exposición Pública Fija con ngrok (Sin tocar DNS del Hosting)
 Para exponer el backend a Internet o a la App de Netlify con una URL fija con HTTPS sin depender del proveedor de hosting del dominio principal:
 
 1. Abrir **PowerShell como Administrador** en la VM.
-2. Ejecutar el asistente automático de Serveo:
+2. Ejecutar el asistente automático de ngrok:
    ```powershell
-   .\setup_serveo_tunnel.ps1
+   .\setup_ngrok_tunnel.ps1
    ```
 3. El script automáticamente:
-   - Limpia servicios o procesos anteriores.
-   - Genera el runner de auto-reconexión `C:\cloudflared\run_serveo_runner.ps1`.
-   - Registra y activa la Tarea Programada de Windows `ServeoTunnelTask` de fondo.
-   - Expone el backend bajo la URL estática: **`https://dy-remitos-api.serveo.net`**.
+   - Descarga ngrok e instala `C:\ngrok\ngrok.exe` agregando la exclusión en Windows Defender.
+   - Genera el runner de auto-reconexión `C:\ngrok\run_ngrok.ps1` con la configuración global `C:\ngrok\ngrok.yml`.
+   - Registra y activa la Tarea Programada de Windows `NgrokTunnelTask` de fondo bajo la cuenta `SYSTEM`.
+   - Expone el backend bajo tu dominio estático (ej: **`https://tu-dominio.ngrok-free.app`**).
 
 ---
 
