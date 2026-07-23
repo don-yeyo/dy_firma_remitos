@@ -14,7 +14,7 @@ if (-not $SshPath) {
 }
 Write-Host "[OK] Cliente OpenSSH encontrado en: $SshPath" -ForegroundColor Green
 
-# 2. Definir o recuperar Subdominio Fijo Persistente
+# 2. Definir o recuperar Subdominio Fijo Persistente y Carpeta Base
 Write-Host "`n[Paso 1/5] Configurando subdominio estático persistente para Serveo..." -ForegroundColor Yellow
 $TunnelDir = "C:\cloudflared"
 if (-not (Test-Path $TunnelDir)) {
@@ -31,6 +31,21 @@ if (Test-Path $SubdomainFile) {
     $Subdomain = "dy-remitos-$RandomSuffix"
     Set-Content -Path $SubdomainFile -Value $Subdomain -Encoding UTF8
     Write-Host "[OK] Generado nuevo subdominio persistente amigable: $Subdomain.serveo.net" -ForegroundColor Green
+}
+
+# 2b. Crear y configurar Llave SSH persistente (Requerida por Serveo para subdominios fijos)
+$SshKeyPath = Join-Path $TunnelDir "id_rsa"
+if (-not (Test-Path $SshKeyPath)) {
+    Write-Host "Generando clave SSH en el servidor local para reservar el subdominio en Serveo..." -ForegroundColor Yellow
+    # ssh-keygen requiere comillas vacías para la frase de contraseña
+    & ssh-keygen -t rsa -b 2048 -N '""' -f "$SshKeyPath" | Out-Null
+    if (Test-Path $SshKeyPath) {
+        Write-Host "[OK] Clave SSH de reserva generada en: $SshKeyPath" -ForegroundColor Green
+    } else {
+        Write-Host "[WARNING] No se pudo generar la clave SSH de forma automática. Serveo podría rechazar el subdominio fijo." -ForegroundColor Yellow
+    }
+} else {
+    Write-Host "[OK] Clave SSH de reserva encontrada en: $SshKeyPath" -ForegroundColor Green
 }
 
 # 3. Limpieza de procesos y servicios anteriores (Cloudflared y SSH previos)
@@ -53,7 +68,7 @@ $TaskName = "ServeoTunnelTask"
 schtasks /delete /tn "$TaskName" /f 2>$null | Out-Null
 Write-Host "[OK] Entorno limpio y listo para el nuevo túnel." -ForegroundColor Green
 
-# 4. Crear carpeta de persistencia y el Runner Script con Keep-Alive robusto
+# 4. Crear carpeta de persistencia y el Runner Script con Keep-Alive robusto y Llave Explícita
 Write-Host "`n[Paso 3/5] Creando scripts de auto-reconexión del túnel..." -ForegroundColor Yellow
 
 $RunnerScriptPath = Join-Path $TunnelDir "run_serveo_runner.ps1"
@@ -63,9 +78,10 @@ Write-Host "[SERVIEO] Iniciando túnel para $Subdomain.serveo.net..." -Foregroun
 
 while (`$true) {
     try {
+        # -i "$SshKeyPath" obliga a usar la clave SSH persistente para reservar el subdominio
         # -o ExitOnForwardFailure=yes hace que ssh aborte si falla el reenvío de puerto
         # -o UserKnownHostsFile=\\.\NUL evita que intente escribir known_hosts en el home de SYSTEM
-        & "$SshPath" -N -o StrictHostKeyChecking=no -o UserKnownHostsFile=\\.\NUL -o ExitOnForwardFailure=yes -o ServerAliveInterval=30 -o ServerAliveCountMax=3 -R "$Subdomain:80:localhost:8000" serveo.net
+        & "$SshPath" -i "$SshKeyPath" -N -o StrictHostKeyChecking=no -o UserKnownHostsFile=\\.\NUL -o ExitOnForwardFailure=yes -o ServerAliveInterval=30 -o ServerAliveCountMax=3 -R "$Subdomain:80:localhost:8000" serveo.net
     } catch {
         Write-Host "[SERVIEO ERROR] `$($_)" -ForegroundColor Red
     }
@@ -110,4 +126,7 @@ Write-Host "====================================================================
 
 Write-Host "`n[ATENCION] Recordá configurar este subdominio fijo en Netlify:"
 Write-Host "VITE_API_URL=https://$Subdomain.serveo.net" -ForegroundColor Cyan
+Write-Host "====================================================================" -ForegroundColor Green
+Write-Host "`n  Nota: Para pruebas manuales de depuración en consola, usa:"
+Write-Host "  ssh -i $SshKeyPath -R $Subdomain:80:localhost:8000 serveo.net" -ForegroundColor Gray
 Write-Host "====================================================================" -ForegroundColor Green

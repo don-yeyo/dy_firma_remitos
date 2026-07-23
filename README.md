@@ -180,6 +180,7 @@ Serveo.net permite crear un túnel inverso por SSH que expone el puerto local de
 
 #### Características del Script `setup_serveo_tunnel.ps1`:
 * **Subdominio Fijo y Persistente**: La primera vez que se corre el script en la VM, este genera un subdominio legible al azar (ej: `dy-remitos-5821.serveo.net`) y lo guarda de forma persistente en el archivo local `C:\cloudflared\serveo_subdomain.txt`. En los siguientes arranques o reinicios de la máquina virtual, se reutiliza el mismo subdominio para evitar tener que reconfigurar la URL en Netlify.
+* **Reserva de Identidad por Llave SSH**: Serveo requiere el envío de una clave pública para reservar subdominios fijos en su servidor. El script genera una clave SSH local robusta de 2048 bits en `C:\cloudflared\id_rsa` y la pasa explícitamente con el parámetro `-i` de SSH. Esto previene que Serveo asigne una URL aleatoria inestable (`serveousercontent.com`) o rechace el subdominio.
 * **Limpieza de Conflictos**: Detiene y desinstala cualquier servicio o proceso residual de `cloudflared.exe` o túneles SSH huérfanos anteriores.
 * **Auto-Reconexión de Fondo**: Genera un runner en PowerShell (`run_serveo_runner.ps1`) y lo registra en el Programador de Tareas de Windows Server bajo el nombre `ServeoTunnelTask`.
 * **Arranque con SYSTEM**: La tarea está programada para iniciarse automáticamente con el sistema (`/sc onstart`) bajo el contexto del usuario del sistema `SYSTEM`, de forma oculta (`-WindowStyle Hidden`).
@@ -197,7 +198,7 @@ Para levantar la exposición pública fija de la API, sigue estos pasos:
    Set-ExecutionPolicy Bypass -Scope Process -Force
    .\setup_serveo_tunnel.ps1
    ```
-3. El script limpiará el entorno, creará el subdominio permanente y arrancará el proceso en segundo plano. Al finalizar, mostrará en pantalla la URL generada:
+3. El script limpiará el entorno, generará la llave de seguridad SSH en `C:\cloudflared\id_rsa`, creará el subdominio permanente y arrancará el proceso en segundo plano. Al finalizar, mostrará en pantalla la URL generada:
    ```text
    ====================================================================
      [PROCESO COMPLETADO CON EXITO]
@@ -206,6 +207,10 @@ Para levantar la exposición pública fija de la API, sigue estos pasos:
      URL alternativa HTTP:         http://dy-remitos-5821.serveo.net
    ====================================================================
    ```
+   > [!NOTE]
+   > Para realizar pruebas manuales de depuración por consola o visualizar los logs del túnel en tiempo real, ejecuta:
+   > `ssh -i C:\cloudflared\id_rsa -R dy-remitos-5821:80:localhost:8000 serveo.net`
+
 4. **Actualizar el Frontend (Netlify)**:
    * Copia la URL pública fija obtenida (ej: `https://dy-remitos-5821.serveo.net`).
    * Accede a tu panel administrativo de Netlify (`https://dy-firem.netlify.app/`).
