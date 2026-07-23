@@ -102,8 +102,8 @@ graph TD
         A["Cliente React (Netlify) <br> https://dy-firem.netlify.app/"]
         AAD["Microsoft Entra ID <br> (Microsoft Auth)"]
     end
-    subgraph Cloudflare ["Edge Network"]
-        CF["Cloudflare Tunnel <br> (*.trycloudflare.com)"]
+    subgraph Serveo ["SSH Tunneling Service"]
+        ST["Serveo Tunnel <br> (*.serveo.net)"]
     end
     subgraph Corporativo ["Red LAN Local (Don Yeyo S.A.)"]
         VM["VM Windows Server <br> (FastAPI Backend - Port 8000)"]
@@ -115,8 +115,8 @@ graph TD
     end
 
     A -->|1. Autentica con| AAD
-    A -->|2. Peticiones HTTPS| CF
-    CF -->|3. Proxy Reverso Seguro| VM
+    A -->|2. Peticiones HTTPS| ST
+    ST -->|3. Túnel SSH Inverso| VM
     VM -->|4. Comando WIA Scan| R
     VM -->|5. Guarda Auditoría| DB
     VM -->|6. Sincroniza Remitos| ERP
@@ -130,7 +130,7 @@ sequenceDiagram
     actor Operador
     participant App as Frontend (Netlify / https://dy-firem.netlify.app/)
     participant AAD as Microsoft Entra ID (Auth)
-    participant CF as Cloudflare Tunnel (HTTPS FQDN)
+    participant ST as Serveo Tunnel (HTTPS FQDN)
     participant VM as Backend (VM Local / FastAPI)
     participant Ricoh as Multifunción Ricoh IM C300
 
@@ -138,141 +138,80 @@ sequenceDiagram
     App->>AAD: Redirecciona para Login Corporativo
     AAD-->>App: Retorna Token JWT de Acceso (Usuario OK)
     Operador->>App: Presiona "Escanear + Procesar Todo"
-    App->>CF: HTTP POST /api/scan-and-process (con Token)
-    Note over CF: El Túnel redirige de forma segura<br/>cruzando el firewall de la VM
-    CF->>VM: Reenvía petición a http://localhost:8000
+    App->>ST: HTTP POST /api/scan-and-process (con Token)
+    Note over ST: El Túnel redirige de forma segura<br/>cruzando el firewall de la VM
+    ST->>VM: Reenvía petición a http://localhost:8000
     VM->>Ricoh: Ejecuta escaneo WIA COM (ADF / SPDF)
     Ricoh-->>VM: Retorna imágenes JPG del remito
     Note over VM: Ejecuta OCR & VLM local o nube
-    VM-->>CF: Retorna JSON de resultados de firma y URLs
-    CF-->>App: Retorna respuesta al navegador
+    VM-->>ST: Retorna JSON de resultados de firma y URLs
+    ST-->>App: Retorna respuesta al navegador
     App-->>Operador: Muestra progreso y remitos digitalizados en pantalla
 ```
 
 ---
 
-## 🌐 Diagnóstico y Conectividad con Cloudflare Tunnel
+## 🌐 Conectividad Externa: Descarte de Cloudflare Tunnel y Migración a Serveo.net
 
-### ¿Por qué mi URL del túnel devuelve "Not Found"?
-Si al visitar el dominio configurado en Netlify (ej. `https://regard-refused-reservation-kennedy.trycloudflare.com`) se muestra un error **Not Found (404)** o **Bad Gateway (502)**, esto ocurre debido a dos razones principales:
+### 🔍 Justificación del Descarte de Cloudflare Tunnel (Named Tunnel)
 
-1. **El túnel es efímero y expiró**: Al ejecutar `cloudflared.exe tunnel --url http://localhost:8000` de forma rápida sin una cuenta de Cloudflare, se genera un subdominio temporal en `trycloudflare.com`. Cada vez que el túnel se detiene y se vuelve a iniciar en la VM local, **el subdominio previo es destruido** y Cloudflare genera uno completamente aleatorio nuevo (como `https://hobbies-focus-step-outsourcing.trycloudflare.com`).
-2. **El backend local no está corriendo**: Si el túnel de Cloudflare está activo pero el servidor FastAPI no está ejecutándose localmente en la VM (puerto `8000`), Cloudflare no encontrará dónde redirigir el tráfico y arrojará error.
+Originalmente se planificó utilizar **Cloudflare Tunnel** de forma nominada y persistente (`setup_cloudflare_tunnel.ps1`) para mapear el subdominio `firem-api.donyeyo.com.ar` hacia la máquina virtual del servidor local. 
 
-### Paso a Paso para Reactivar el Canal Efímero en la VM:
-1. **Levantar el Backend**: Abra una terminal en la VM de Windows Server, navegue a la carpeta del proyecto y levante el servidor FastAPI local:
-   ```powershell
-   uv run python server/server.py
-   ```
-2. **Iniciar el Túnel**: Abra otra terminal en la VM (donde tenga descargado el archivo `cloudflared.exe`) y levante el túnel efímero apuntando al puerto local `8000`:
-   ```powershell
-   .\cloudflared.exe tunnel --url http://localhost:8000
-   ```
-3. **Copiar la Nueva URL**: Ubique la línea en los logs de consola de Cloudflare que indica:
-   `Your quick Tunnel has been created! Visit it at: https://xxxx-xxxx-xxxx.trycloudflare.com`
-4. **Configurar Netlify**:
-   * Ingrese al panel administrativo de Netlify de la app (`https://dy-firem.netlify.app/`).
-   * Vaya a **Site Configuration** → **Environment variables**.
-   * Modifique la variable `VITE_API_URL` ingresando la nueva URL obtenida (ej. `https://xxxx-xxxx-xxxx.trycloudflare.com`).
-   * **IMPORTANTE**: Guarde los cambios y ejecute un redespliegue de la aplicación (Deploy Site) para que los archivos estáticos de React compilen con la nueva IP del backend.
+Sin embargo, durante las pruebas de red y diagnóstico en la terminal de la VM:
+```powershell
+PS C:\Users\Administrador> Resolve-DnsName donyeyo.com.ar -Type NS
+Name                           Type   TTL   Section    NameHost
+----                           ----   ---   -------    --------
+donyeyo.com.ar                 NS     14400 Answer     ns10.hostmar.com
+donyeyo.com.ar                 NS     14400 Answer     ns9.hostmar.com
+```
+
+Se determinó que:
+1. **Delegación de DNS Externa**: El dominio base `donyeyo.com.ar` no está apuntado a los Name Servers (NS) de Cloudflare, sino que está delegado en **DonWeb** (`ns9.hostmar.com` y `ns10.hostmar.com`).
+2. **Restricción de Panel**: Modificar o crear el subdominio `firem-api.donyeyo.com.ar` requería acceso directo al panel administrativo del hosting de DonWeb. Debido a la complejidad de obtener credenciales de hosting y delegar zonas DNS específicas en tiempo real, la automatización a través del comando `cloudflared tunnel route dns` resultaba inviable y arrojaba fallos de resolución DNS local (`Resolve-DnsName : El nombre DNS no existe`).
 
 ---
 
-### 🔒 Cómo crear un Túnel Persistente (Named Tunnel) y Fijo
+### 🚀 La Solución Adoptada: Túnel SSH Inverso con Serveo.net
 
-Para evitar tener que reconfigurar la URL en Netlify y reiniciar el despliegue del frontend tras cada reinicio de la VM, puedes configurar un túnel persistente y asociarlo a un subdominio fijo (por ejemplo: `remitos-api.donyeyo.com.ar`).
+Para evitar la complejidad del panel DNS de DonWeb y a su vez erradicar los túneles efímeros de Cloudflare (`trycloudflare.com` que cambian su URL en cada reinicio del servidor y obligan a redesplegar el frontend en Netlify), se optó por **Serveo.net**.
 
-#### Opción A: Configuración Automática (Recomendada)
-Se provee un script interactivo de PowerShell en la raíz del proyecto para automatizar todo el proceso:
-1. Abre **PowerShell como Administrador** en la VM.
-2. Navega a la raíz del proyecto y ejecuta el script:
+Serveo.net permite crear un túnel inverso por SSH que expone el puerto local de la VM hacia Internet bajo un subdominio gratuito y **estable/persistente**.
+
+#### Características del Script `setup_serveo_tunnel.ps1`:
+* **Subdominio Fijo y Persistente**: La primera vez que se corre el script en la VM, este genera un subdominio legible al azar (ej: `dy-remitos-5821.serveo.net`) y lo guarda de forma persistente en el archivo local `C:\cloudflared\serveo_subdomain.txt`. En los siguientes arranques o reinicios de la máquina virtual, se reutiliza el mismo subdominio para evitar tener que reconfigurar la URL en Netlify.
+* **Limpieza de Conflictos**: Detiene y desinstala cualquier servicio o proceso residual de `cloudflared.exe` o túneles SSH huérfanos anteriores.
+* **Auto-Reconexión de Fondo**: Genera un runner en PowerShell (`run_serveo_runner.ps1`) y lo registra en el Programador de Tareas de Windows Server bajo el nombre `ServeoTunnelTask`.
+* **Arranque con SYSTEM**: La tarea está programada para iniciarse automáticamente con el sistema (`/sc onstart`) bajo el contexto del usuario del sistema `SYSTEM`, de forma oculta (`-WindowStyle Hidden`).
+* **Keep-Alive e Inmunidad a Fallos**: Configura SSH con los flags `-o ExitOnForwardFailure=yes` (para forzar la desconexión del comando SSH si Serveo no libera el puerto a tiempo, gatillando el reintento), `-o UserKnownHostsFile=\\.\NUL` (para evitar errores de escritura de host key en el perfil del sistema) y `-o ServerAliveInterval=30`.
+
+---
+
+### 🛠️ Guía de Puesta en Marcha en la VM Server
+
+Para levantar la exposición pública fija de la API, sigue estos pasos:
+
+1. **Abrir PowerShell como Administrador** en la máquina virtual.
+2. Navega al directorio raíz del proyecto y ejecuta el script del túnel:
    ```powershell
    Set-ExecutionPolicy Bypass -Scope Process -Force
-   .\setup_cloudflare_tunnel.ps1
+   .\setup_serveo_tunnel.ps1
    ```
-3. El script guiará el inicio de sesión, solicitará el subdominio, creará el túnel nombrado `dy-remitos-tunnel`, generará el archivo `config.yml` con el UUID en `C:\Users\Administrador\.cloudflared\`, creará el registro CNAME en las DNS de Cloudflare y dejará el túnel instalado y corriendo como un Servicio de Windows automático de fondo.
-
----
-
-#### Opción B: Configuración Manual Paso a Paso
-En caso de requerir configuración manual, realiza los siguientes pasos en la VM:
-
-##### 1. Descarga e inicio de sesión:
-* Descarga la última versión de `cloudflared.exe` en la VM desde:
-  - **Enlace directo de GitHub (Windows 64-bit)**: [Descargar cloudflared-windows-amd64.exe](https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-windows-amd64.exe)
-  - **Listado completo de versiones**: [GitHub Releases Assets](https://github.com/cloudflare/cloudflared/releases/latest)
-  - **Alternativa mediante winget** (desde PowerShell de la VM):
-    ```powershell
-    winget install -e --id Cloudflare.cloudflared
-    ```
-* Corre en la consola de la VM (dependiendo de qué consola uses):
-  ```bash
-  # Si usas Git Bash / MINGW64 (recuerda usar barra inclinada /):
-  ../cloudflared.exe tunnel login    # si está en la carpeta de nivel superior
-  
-  # Si usas PowerShell / CMD (barra invertida \):
-  ..\cloudflared.exe tunnel login
-  ```
-* Se abrirá el navegador. Inicia sesión con la cuenta de Cloudflare de la empresa y selecciona el dominio que deseas autorizar (ej. `donyeyo.com.ar`). Esto descargará el certificado criptográfico de autorización `cert.pem` en tu máquina.
-
-##### 2. Crear el Túnel Nombrado:
-* Crea el túnel ejecutando el siguiente comando (puedes ponerle el nombre que quieras):
-  ```bash
-  # En Git Bash:
-  ../cloudflared.exe tunnel create dy-remitos-tunnel
-  
-  # En PowerShell / CMD:
-  ..\cloudflared.exe tunnel create dy-remitos-tunnel
-  ```
-* Copia el **UUID/ID único del túnel** generado (un string con guiones como `550e8400-e29b-41d4-a716-446655440000`) y la ruta al archivo JSON de credenciales creado en tu perfil de usuario de Windows.
-
-##### 3. Configurar el archivo de mapeo (config.yml):
-* Crea un archivo llamado `config.yml` en la carpeta donde tienes `cloudflared.exe` (o en `C:\Users\Administrador\.cloudflared\`) con el siguiente formato:
-  ```yaml
-  tunnel: <UUID-DEL-TUNEL>
-  credentials-file: C:\Users\Administrador\.cloudflared\<UUID-DEL-TUNEL>.json
-
-  ingress:
-    - hostname: remitos-api.donyeyo.com.ar
-      service: http://localhost:8000
-    - service: http_status:404
-  ```
-
-##### 4. Crear la ruta DNS en el panel de Cloudflare:
-* Asocia el subdominio con el túnel ejecutando:
-  ```bash
-  # En Git Bash:
-  ../cloudflared.exe tunnel route dns dy-remitos-tunnel remitos-api.donyeyo.com.ar
-
-  # En PowerShell / CMD:
-  ..\cloudflared.exe tunnel route dns dy-remitos-tunnel remitos-api.donyeyo.com.ar
-  ```
-* Esto generará de forma automática el registro CNAME seguro en las DNS de tu dominio en Cloudflare.
-
-##### 5. Probar e Instalar como Servicio de Windows (Arranque Automático Desatendido):
-* **Prueba manual en consola**:
-  Para probar el túnel manualmente en la terminal de la VM, debes pasarle explícitamente la ruta al archivo de configuración (`config.yml`). De lo contrario, `cloudflared` buscará en ubicaciones por defecto, no leerá las Ingress Rules de redirección al puerto `8000` y retornará un error 503 (No ingress rules defined):
-  ```bash
-  # En Git Bash:
-  ../cloudflared.exe --config C:/Users/Administrador/.cloudflared/config.yml tunnel run dy-remitos-tunnel
-  
-  # En PowerShell / CMD:
-  ..\cloudflared.exe --config C:\Users\Administrador\.cloudflared\config.yml tunnel run dy-remitos-tunnel
-  ```
-* **Instalar el servicio de Windows**:
-  Para que el túnel se inicie de fondo al encender la VM de Windows Server de forma automática, registra el servicio pasándole el archivo de configuración:
-  ```powershell
-  # Instalar servicio con config explícita (Ejecutar PowerShell como Administrador):
-  ..\cloudflared.exe --config C:\Users\Administrador\.cloudflared\config.yml service install
-  ```
-  > [!NOTE]
-  > Al correr como servicio bajo la cuenta de sistema `SYSTEM` (`LocalSystem`), Cloudflare busca las credenciales en el home del sistema. El comando de instalación copia los archivos correspondientes allí de forma automática. Si encuentras errores de ruteo al iniciar el servicio, asegúrate de copiar manualmente los archivos `config.yml` y `ff8b5686-1d34-4d8b-a2ee-83ef0a447b11.json` dentro del directorio:
-  > `C:\Windows\System32\config\systemprofile\.cloudflared\`
-
-* **Iniciar el servicio**:
-  ```powershell
-  Start-Service "Cloudflared"
-  ```
+3. El script limpiará el entorno, creará el subdominio permanente y arrancará el proceso en segundo plano. Al finalizar, mostrará en pantalla la URL generada:
+   ```text
+   ====================================================================
+     [PROCESO COMPLETADO CON EXITO]
+     El túnel Serveo ya corre de fondo en la VM Server.
+     URL pública fija del backend: https://dy-remitos-5821.serveo.net
+     URL alternativa HTTP:         http://dy-remitos-5821.serveo.net
+   ====================================================================
+   ```
+4. **Actualizar el Frontend (Netlify)**:
+   * Copia la URL pública fija obtenida (ej: `https://dy-remitos-5821.serveo.net`).
+   * Accede a tu panel administrativo de Netlify (`https://dy-firem.netlify.app/`).
+   * Ve a **Site Configuration** → **Environment variables**.
+   * Modifica la variable de entorno `VITE_API_URL` con el nuevo valor.
+   * **IMPORTANTE**: Guarda los cambios y ejecuta un redespliegue de la aplicación (Deploy Site) para que los archivos estáticos de React compilen con la URL fija.
 
 ---
 
@@ -677,6 +616,20 @@ Si la VM ya cuenta con Python instalado y preferís correr el servidor directame
    python server/server.py
    ```
    *El servidor leerá tu configuración del `.env`, se conectará a la base de datos de AWS y quedará escuchando peticiones en todas las interfaces en el puerto `8000`.*
+
+#### E. Exposición Pública Fija con Serveo.net (Sin tocar DNS del Hosting)
+Para exponer el backend a Internet o a la App de Netlify con una URL fija con HTTPS sin depender del proveedor de hosting del dominio principal:
+
+1. Abrir **PowerShell como Administrador** en la VM.
+2. Ejecutar el asistente automático de Serveo:
+   ```powershell
+   .\setup_serveo_tunnel.ps1
+   ```
+3. El script automáticamente:
+   - Limpia servicios o procesos anteriores.
+   - Genera el runner de auto-reconexión `C:\cloudflared\run_serveo_runner.ps1`.
+   - Registra y activa la Tarea Programada de Windows `ServeoTunnelTask` de fondo.
+   - Expone el backend bajo la URL estática: **`https://dy-remitos-api.serveo.net`**.
 
 ---
 

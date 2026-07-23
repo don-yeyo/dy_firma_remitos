@@ -28,6 +28,16 @@ if (-not $CloudflaredPath) {
 
 Write-Host "[OK] Encontrado cloudflared.exe en: $CloudflaredPath" -ForegroundColor Green
 
+# 1b. Copiar a C:\cloudflared\ para evitar restricciones de permisos de Servicio de Windows (LocalSystem)
+$SystemBinaryDir = "C:\cloudflared"
+if (-not (Test-Path $SystemBinaryDir)) {
+    New-Item -ItemType Directory -Path $SystemBinaryDir -Force | Out-Null
+}
+$SystemCloudflaredPath = Join-Path $SystemBinaryDir "cloudflared.exe"
+Copy-Item -Path $CloudflaredPath -Destination $SystemCloudflaredPath -Force -ErrorAction SilentlyContinue
+$CloudflaredPath = $SystemCloudflaredPath
+Write-Host "[OK] Copiado ejecutable del servicio a: $CloudflaredPath" -ForegroundColor Green
+
 # 2. Iniciar sesion
 Write-Host "`n[Paso 1/5] Iniciando sesion en Cloudflare..." -ForegroundColor Yellow
 Write-Host "Se abrira el navegador. Inicia sesion en la cuenta y selecciona el dominio corporativo a autorizar."
@@ -79,11 +89,21 @@ if (-not $Uuid) {
 
 Write-Host "[OK] Tunel creado con UUID: $Uuid" -ForegroundColor Green
 
-# 5. Generar archivo config.yml
+# 5. Generar archivo config.yml y preparar carpeta para el Servicio de Windows (SYSTEM)
 Write-Host "`n[Paso 4/5] Generando config.yml de forma automatica..." -ForegroundColor Yellow
+
+$SystemProfileDir = "C:\Windows\System32\config\systemprofile\.cloudflared"
+if (-not (Test-Path $SystemProfileDir)) {
+    New-Item -ItemType Directory -Path $SystemProfileDir -Force | Out-Null
+}
+
+# Copiar JSON de credenciales a la carpeta del sistema
+Copy-Item -Path "C:\Users\Administrador\.cloudflared\$Uuid.json" -Destination (Join-Path $SystemProfileDir "$Uuid.json") -Force -ErrorAction SilentlyContinue
+
 $ConfigContent = @"
 tunnel: $Uuid
-credentials-file: C:\Users\Administrador\.cloudflared\$Uuid.json
+credentials-file: C:/Windows/System32/config/systemprofile/.cloudflared/$Uuid.json
+logfile: C:/Windows/System32/config/systemprofile/.cloudflared/cloudflared.log
 
 ingress:
   - hostname: $Hostname
@@ -97,7 +117,11 @@ if (-not (Test-Path $ConfigFileDir)) {
 }
 $ConfigFilePath = Join-Path $ConfigFileDir "config.yml"
 Set-Content -Path $ConfigFilePath -Value $ConfigContent -Encoding UTF8
-Write-Host "[OK] config.yml escrito con exito en: $ConfigFilePath" -ForegroundColor Green
+
+# Copiar config.yml al perfil del sistema
+Copy-Item -Path $ConfigFilePath -Destination (Join-Path $SystemProfileDir "config.yml") -Force -ErrorAction SilentlyContinue
+
+Write-Host "[OK] config.yml escrito con exito en: $ConfigFilePath y en $SystemProfileDir" -ForegroundColor Green
 
 # 6. Registrar DNS
 Write-Host "`n[Paso 5/5] Asociando DNS route en Cloudflare para $Hostname..." -ForegroundColor Yellow
@@ -108,21 +132,20 @@ Write-Host "`nInstalando Cloudflare Tunnel como Servicio de Windows (Arranque de
 $Service = Get-Service -Name "Cloudflared" -ErrorAction SilentlyContinue
 if ($Service) {
     Write-Host "Removiendo servicio existente..."
-    & $CloudflaredPath service uninstall | Out-Null
+    Stop-Service "Cloudflared" -ErrorAction SilentlyContinue
+    Stop-Process -Name "cloudflared" -Force -ErrorAction SilentlyContinue
+    Start-Sleep -Seconds 2
+    & $CloudflaredPath service uninstall 2>$null | Out-Null
+    Start-Sleep -Seconds 2
 }
 
-# Instalar el servicio indicándole la configuración explícita
-& $CloudflaredPath --config $ConfigFilePath service install
+# Instalar el servicio
+& $CloudflaredPath service install
 
-# Copia de seguridad al perfil del sistema (SYSTEM) para evitar problemas de permisos de LocalSystem
-$SystemProfileDir = "C:\Windows\System32\config\systemprofile\.cloudflared"
-if (Test-Path "C:\Windows\System32\config\systemprofile") {
-    if (-not (Test-Path $SystemProfileDir)) {
-        New-Item -ItemType Directory -Path $SystemProfileDir -Force | Out-Null
-    }
-    Copy-Item -Path $ConfigFilePath -Destination (Join-Path $SystemProfileDir "config.yml") -Force -ErrorAction SilentlyContinue
-    Copy-Item -Path "C:\Users\Administrador\.cloudflared\$Uuid.json" -Destination (Join-Path $SystemProfileDir "$Uuid.json") -Force -ErrorAction SilentlyContinue
-}
+# Garantizar el comando exacto en el Registro de Servicios de Windows (ImagePath)
+$RegPath = "HKLM:\SYSTEM\CurrentControlSet\Services\Cloudflared"
+$ExactImagePath = "`"$CloudflaredPath`" --config `"$SystemProfileDir\config.yml`" tunnel run"
+Set-ItemProperty -Path $RegPath -Name "ImagePath" -Value $ExactImagePath -Force -ErrorAction SilentlyContinue
 
 # Arrancar servicio
 Start-Service "Cloudflared" -ErrorAction SilentlyContinue
