@@ -344,6 +344,7 @@ def run_action_in_thread(action_name: str, status_type: str, logic_func, action_
                         "success": True,
                         "cancelled": False,
                         "type": status_type,
+                        "action_id": action_id,
                         "summary": res_metrics or {}
                     }
                     print(f"[SYSTEM] Proceso '{action_name}' finalizado con éxito.")
@@ -354,6 +355,7 @@ def run_action_in_thread(action_name: str, status_type: str, logic_func, action_
                         "success": False,
                         "cancelled": True,
                         "type": status_type,
+                        "action_id": action_id,
                         "message": "Proceso cancelado voluntariamente por el usuario.",
                         "summary": {}
                     }
@@ -365,6 +367,7 @@ def run_action_in_thread(action_name: str, status_type: str, logic_func, action_
                         "success": False,
                         "cancelled": False,
                         "type": status_type,
+                        "action_id": action_id,
                         "message": str(e),
                         "summary": {}
                     }
@@ -415,7 +418,7 @@ def start_scan():
         }
         
     run_action_in_thread("Escaneo_Masivo_Paso_1", "scanning", do_scan, action_id)
-    return {"status": "started", "message": "Proceso de escaneo masivo iniciado."}
+    return {"status": "started", "action_id": action_id, "message": "Proceso de escaneo masivo iniciado."}
 
 @app.post("/api/process")
 def start_process():
@@ -433,7 +436,7 @@ def start_process():
         return processor.process_all_scans()
         
     run_action_in_thread("Procesamiento_IA_Paso_2", "processing", do_process, action_id)
-    return {"status": "started", "message": "Proceso de análisis por IA iniciado."}
+    return {"status": "started", "action_id": action_id, "message": "Proceso de análisis por IA iniciado."}
 
 @app.post("/api/scan-and-process")
 def start_scan_and_process():
@@ -473,7 +476,7 @@ def start_scan_and_process():
         return res
         
     run_action_in_thread("Flujo_Completo_Escaneo_e_IA", "scanning-and-processing", do_full_flow, action_id)
-    return {"status": "started", "message": "Flujo completo (Escaneo + IA) iniciado."}
+    return {"status": "started", "action_id": action_id, "message": "Flujo completo (Escaneo + IA) iniciado."}
 
 @app.post("/api/sync-finnegans")
 def start_sync():
@@ -508,7 +511,7 @@ def start_sync():
         }
         
     run_action_in_thread("Sincronizacion_ERP_Finnegans", "syncing", do_sync, action_id)
-    return {"status": "started", "message": "Proceso de sincronización con Finnegans iniciado."}
+    return {"status": "started", "action_id": action_id, "message": "Proceso de sincronización con Finnegans iniciado."}
 
 
 @app.get("/api/history")
