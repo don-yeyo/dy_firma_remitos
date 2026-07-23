@@ -14,8 +14,13 @@ import sys
 import glob
 import shutil
 import argparse
-from datetime import datetime, date
-import openpyxl
+try:
+    import openpyxl
+except ImportError:
+    print("[INFO] Instalando librería 'openpyxl' necesaria para procesar archivos Excel...")
+    import subprocess
+    subprocess.check_call([sys.executable, "-m", "pip", "install", "openpyxl"])
+    import openpyxl
 import pymysql
 from dotenv import load_dotenv
 
