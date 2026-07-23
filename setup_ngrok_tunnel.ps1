@@ -64,44 +64,61 @@ if (-not (Test-Path $NgrokExe)) {
 # --- Paso 2: Configurar Authtoken ---
 Write-Host "`n[Paso 2/5] Configurando autenticacion de ngrok..." -ForegroundColor Yellow
 
-# Verificar si ya hay un token configurado
-$NgrokConfigCheck = & "$NgrokExe" config check 2>&1
-$TokenConfigured = $false
+$TokenFile = Join-Path $NgrokDir "ngrok_token.txt"
+$ConfigFile = Join-Path $NgrokDir "ngrok.yml"
 
-# Intentar leer el config.yml de ngrok para ver si tiene authtoken
-$NgrokConfigPath = Join-Path $env:USERPROFILE ".ngrok2\ngrok.yml"
-$NgrokConfigPathV3 = Join-Path $env:LOCALAPPDATA "ngrok\ngrok.yml"
+if (Test-Path $TokenFile) {
+    $AuthToken = (Get-Content -Path $TokenFile -Raw).Trim()
+    Write-Host "[OK] Authtoken cargado desde: $TokenFile" -ForegroundColor Green
+} else {
+    # Intentar leer del config de usuario si existe
+    $NgrokConfigPath = Join-Path $env:USERPROFILE ".ngrok2\ngrok.yml"
+    $NgrokConfigPathV3 = Join-Path $env:LOCALAPPDATA "ngrok\ngrok.yml"
+    $FoundToken = ""
 
-foreach ($cfgPath in @($NgrokConfigPathV3, $NgrokConfigPath)) {
-    if (Test-Path $cfgPath) {
-        $cfgContent = Get-Content $cfgPath -Raw -ErrorAction SilentlyContinue
-        if ($cfgContent -match "authtoken:") {
-            $TokenConfigured = $true
-            Write-Host "[OK] Authtoken de ngrok ya esta configurado." -ForegroundColor Green
-            break
+    foreach ($cfgPath in @($NgrokConfigPathV3, $NgrokConfigPath)) {
+        if (Test-Path $cfgPath) {
+            $cfgContent = Get-Content $cfgPath -Raw -ErrorAction SilentlyContinue
+            if ($cfgContent -match "authtoken:\s*([^\s]+)") {
+                $FoundToken = $matches[1]
+                break
+            }
         }
     }
+
+    if ($FoundToken) {
+        $AuthToken = $FoundToken
+        Set-Content -Path $TokenFile -Value $AuthToken -Encoding UTF8
+        Write-Host "[OK] Authtoken detectado y guardado en: $TokenFile" -ForegroundColor Green
+    } else {
+        Write-Host "====================================================================" -ForegroundColor Yellow
+        Write-Host "  ACCION REQUERIDA: Ingresa tu authtoken de ngrok" -ForegroundColor Yellow
+        Write-Host "====================================================================" -ForegroundColor Yellow
+        Write-Host "1. Inicia sesion en https://dashboard.ngrok.com" -ForegroundColor White
+        Write-Host "2. Ve a 'Your Authtoken' en el menu lateral" -ForegroundColor White
+        Write-Host "3. Copia el token y pegalo aqui abajo" -ForegroundColor White
+        Write-Host "====================================================================" -ForegroundColor Yellow
+        Write-Host ""
+        $AuthToken = Read-Host "  Pega tu authtoken de ngrok"
+        
+        if ([string]::IsNullOrWhiteSpace($AuthToken)) {
+            Write-Host "[ERROR] No se ingreso ningun authtoken. Abortando." -ForegroundColor Red
+            exit 1
+        }
+        
+        $AuthToken = $AuthToken.Trim()
+        Set-Content -Path $TokenFile -Value $AuthToken -Encoding UTF8
+        Write-Host "[OK] Authtoken guardado en: $TokenFile" -ForegroundColor Green
+    }
 }
 
-if (-not $TokenConfigured) {
-    Write-Host "====================================================================" -ForegroundColor Yellow
-    Write-Host "  ACCION REQUERIDA: Ingresa tu authtoken de ngrok" -ForegroundColor Yellow
-    Write-Host "====================================================================" -ForegroundColor Yellow
-    Write-Host "1. Inicia sesion en https://dashboard.ngrok.com" -ForegroundColor White
-    Write-Host "2. Ve a 'Your Authtoken' en el menu lateral" -ForegroundColor White
-    Write-Host "3. Copia el token y pegalo aqui abajo" -ForegroundColor White
-    Write-Host "====================================================================" -ForegroundColor Yellow
-    Write-Host ""
-    $AuthToken = Read-Host "  Pega tu authtoken de ngrok"
-    
-    if ([string]::IsNullOrWhiteSpace($AuthToken)) {
-        Write-Host "[ERROR] No se ingreso ningun authtoken. Abortando." -ForegroundColor Red
-        exit 1
-    }
-    
-    & "$NgrokExe" config add-authtoken $AuthToken 2>&1 | Out-Null
-    Write-Host "[OK] Authtoken configurado exitosamente." -ForegroundColor Green
-}
+# Registrar authtoken en ngrok y crear config global
+& "$NgrokExe" config add-authtoken $AuthToken 2>&1 | Out-Null
+$GlobalConfigContent = @"
+version: "2"
+authtoken: $AuthToken
+"@
+Set-Content -Path $ConfigFile -Value $GlobalConfigContent -Encoding UTF8
 
 # --- Paso 3: Configurar dominio estatico ---
 Write-Host "`n[Paso 3/5] Configurando dominio estatico de ngrok..." -ForegroundColor Yellow
@@ -159,13 +176,14 @@ $RunnerContent = @"
 # Runner persistente de ngrok con auto-reconexion
 `$NgrokExe = "$NgrokExe"
 `$NgrokDomain = "$NgrokDomain"
+`$ConfigFile = "$ConfigFile"
 `$LocalPort = $LocalPort
 `$LogFile = "$NgrokDir\ngrok_tunnel.log"
 
 while (`$true) {
     try {
         "[$((Get-Date).ToString('yyyy-MM-dd HH:mm:ss'))] Iniciando tunel ngrok para `$NgrokDomain..." | Out-File -FilePath `$LogFile -Append -Encoding UTF8
-        & `$NgrokExe http --domain=`$NgrokDomain `$LocalPort --log=`$LogFile --log-format=logfmt 2>&1
+        & `$NgrokExe http --config=`$ConfigFile --domain=`$NgrokDomain `$LocalPort --log=`$LogFile --log-format=logfmt 2>&1
     } catch {
         "[ERROR] `$_" | Out-File -FilePath `$LogFile -Append -Encoding UTF8
     }
