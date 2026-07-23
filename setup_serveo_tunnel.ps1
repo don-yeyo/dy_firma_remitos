@@ -68,6 +68,26 @@ $TaskName = "ServeoTunnelTask"
 schtasks /delete /tn "$TaskName" /f 2>$null | Out-Null
 Write-Host "[OK] Entorno limpio y listo para el nuevo túnel." -ForegroundColor Green
 
+# 3b. Registro Interactivo de la Clave SSH en Serveo
+Write-Host "`n====================================================================" -ForegroundColor Yellow
+Write-Host "  [ATENCION: REGISTRO DE CLAVE SSH EN SERVEO.NET]" -ForegroundColor Yellow
+Write-Host "====================================================================" -ForegroundColor Yellow
+Write-Host "Para reservar el subdominio fijo '$Subdomain', Serveo requiere asociar tu clave SSH."
+Write-Host "A continuacion, se abrira una conexion SSH temporal en esta ventana."
+Write-Host "Por favor, sigue estos pasos:"
+Write-Host "1. Copia el enlace de autorizacion que aparezca en pantalla (ej: github.com o google.com)."
+Write-Host "2. Abrelo en tu navegador y autoriza la clave en Serveo."
+Write-Host "3. Una vez autorizado en la web, presiona [CTRL+C] en esta consola para continuar."
+Write-Host "====================================================================" -ForegroundColor Yellow
+Write-Host "Iniciando conexion temporal SSH de registro..." -ForegroundColor Gray
+Start-Sleep -Seconds 3
+
+# Correr ssh de forma interactiva en la misma consola
+& "$SshPath" -i "$SshKeyPath" -o StrictHostKeyChecking=no -o UserKnownHostsFile=\\.\NUL -R "$Subdomain:80:localhost:8000" serveo.net
+
+Write-Host "`n[OK] Conexion temporal finalizada. Continuando con la instalacion del servicio de fondo..." -ForegroundColor Green
+Start-Sleep -Seconds 2
+
 # 4. Crear carpeta de persistencia y el Runner Script con Keep-Alive robusto y Llave Explícita
 Write-Host "`n[Paso 3/5] Creando scripts de auto-reconexión del túnel..." -ForegroundColor Yellow
 
