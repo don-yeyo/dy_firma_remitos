@@ -83,7 +83,8 @@ Write-Host "Iniciando conexion temporal SSH de registro..." -ForegroundColor Gra
 Start-Sleep -Seconds 3
 
 # Correr ssh de forma interactiva en la misma consola
-& "$SshPath" -i "$SshKeyPath" -o StrictHostKeyChecking=no -o UserKnownHostsFile=\\.\NUL -R "$Subdomain:80:localhost:8000" serveo.net
+# NOTA: Se usa ${Subdomain} con llaves para evitar que PowerShell interprete los ":" como modificador de ámbito (scope)
+& "$SshPath" -i "$SshKeyPath" -o StrictHostKeyChecking=no -o UserKnownHostsFile=\\.\NUL -R "${Subdomain}:80:localhost:8000" serveo.net
 
 Write-Host "`n[OK] Conexion temporal finalizada. Continuando con la instalacion del servicio de fondo..." -ForegroundColor Green
 Start-Sleep -Seconds 2
@@ -101,7 +102,7 @@ while (`$true) {
         # -i "$SshKeyPath" obliga a usar la clave SSH persistente para reservar el subdominio
         # -o ExitOnForwardFailure=yes hace que ssh aborte si falla el reenvío de puerto
         # -o UserKnownHostsFile=\\.\NUL evita que intente escribir known_hosts en el home de SYSTEM
-        & "$SshPath" -i "$SshKeyPath" -N -o StrictHostKeyChecking=no -o UserKnownHostsFile=\\.\NUL -o ExitOnForwardFailure=yes -o ServerAliveInterval=30 -o ServerAliveCountMax=3 -R "$Subdomain:80:localhost:8000" serveo.net
+        & "$SshPath" -i "$SshKeyPath" -N -o StrictHostKeyChecking=no -o UserKnownHostsFile=\\.\NUL -o ExitOnForwardFailure=yes -o ServerAliveInterval=30 -o ServerAliveCountMax=3 -R "${Subdomain}:80:localhost:8000" serveo.net
     } catch {
         Write-Host "[SERVIEO ERROR] `$($_)" -ForegroundColor Red
     }
@@ -148,5 +149,5 @@ Write-Host "`n[ATENCION] Recordá configurar este subdominio fijo en Netlify:"
 Write-Host "VITE_API_URL=https://$Subdomain.serveo.net" -ForegroundColor Cyan
 Write-Host "====================================================================" -ForegroundColor Green
 Write-Host "`n  Nota: Para pruebas manuales de depuración en consola, usa:"
-Write-Host "  ssh -i $SshKeyPath -R $Subdomain:80:localhost:8000 serveo.net" -ForegroundColor Gray
+Write-Host "  ssh -i $SshKeyPath -R ${Subdomain}:80:localhost:8000 serveo.net" -ForegroundColor Gray
 Write-Host "====================================================================" -ForegroundColor Green
