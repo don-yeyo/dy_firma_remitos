@@ -305,62 +305,67 @@ async def cancel_process():
 def run_action_in_thread(action_name: str, status_type: str, logic_func, action_id: str):
     """Ejecuta una función de negocio en un hilo con log físico y control de excepciones/cancelación."""
     def target():
-        # 1. Iniciar log físico
-        with action_logging(action_name) as log_filepath:
-            last_result = None
-            try:
-                # 2. Ejecutar lógica
-                res_metrics = logic_func()
-                
-                # 3. Registrar éxito
-                last_result = {
-                    "success": True,
-                    "cancelled": False,
-                    "type": status_type,
-                    "summary": res_metrics or {}
-                }
-                print(f"[SYSTEM] Proceso '{action_name}' finalizado con éxito.")
-                
-            except state.ProcessCancelledException as ce:
-                # 4. Registrar cancelación
-                last_result = {
-                    "success": False,
-                    "cancelled": True,
-                    "type": status_type,
-                    "message": "Proceso cancelado voluntariamente por el usuario.",
-                    "summary": {}
-                }
-                print(f"[SYSTEM] Proceso '{action_name}' cancelado de forma limpia: {ce}")
-                
-            except Exception as e:
-                # 5. Registrar error
-                last_result = {
-                    "success": False,
-                    "cancelled": False,
-                    "type": status_type,
-                    "message": str(e),
-                    "summary": {}
-                }
-                print(f"[SYSTEM ERROR] Excepción en '{action_name}': {e}")
-                
-            finally:
-                # Actualizar progreso a fase final antes de liberar el hilo
-                state.update_progress("Volcando datos y preparando resumen...", 98, 100)
-                time.sleep(1.0)
-                state.update_progress("Enviando reporte de auditoría por email...", 99, 100)
-                time.sleep(1.5)
-                
-                # 6. Devolver a idle y setear resultados si el ID de acción coincide
-                state.set_idle(last_result, action_id)
-                
-                # 7. Mandar email de auditoría leyendo el log físico
+        last_result = None
+        log_filepath = None
+        try:
+            # 1. Iniciar log físico
+            with action_logging(action_name) as filepath:
+                log_filepath = filepath
                 try:
-                    time.sleep(0.5) # pausa corta para liberar el descriptor del archivo
-                    with open(log_filepath, "r", encoding="utf-8") as lf:
-                        log_lines = lf.readlines()
-                    run_email_async(action_name, [line.strip() for line in log_lines])
-                except Exception as mail_err:
-                    print(f"[SMTP ERROR] No se pudo enviar el email de auditoría: {mail_err}")
+                    # 2. Ejecutar lógica
+                    res_metrics = logic_func()
+                    
+                    # 3. Registrar éxito
+                    last_result = {
+                        "success": True,
+                        "cancelled": False,
+                        "type": status_type,
+                        "summary": res_metrics or {}
+                    }
+                    print(f"[SYSTEM] Proceso '{action_name}' finalizado con éxito.")
+                    
+                except state.ProcessCancelledException as ce:
+                    # 4. Registrar cancelación
+                    last_result = {
+                        "success": False,
+                        "cancelled": True,
+                        "type": status_type,
+                        "message": "Proceso cancelado voluntariamente por el usuario.",
+                        "summary": {}
+                    }
+                    print(f"[SYSTEM] Proceso '{action_name}' cancelado de forma limpia: {ce}")
+                    
+                except Exception as e:
+                    # 5. Registrar error
+                    last_result = {
+                        "success": False,
+                        "cancelled": False,
+                        "type": status_type,
+                        "message": str(e),
+                        "summary": {}
+                    }
+                    print(f"[SYSTEM ERROR] Excepción en '{action_name}': {e}")
+                    
+                finally:
+                    # Actualizar progreso a fase final antes de liberar el hilo
+                    state.update_progress("Volcando datos y preparando resumen...", 98, 100)
+                    time.sleep(1.0)
+                    state.update_progress("Enviando reporte de auditoría por email...", 99, 100)
+                    time.sleep(1.5)
+                    
+                    # 6. Devolver a idle y setear resultados si el ID de acción coincide
+                    state.set_idle(last_result, action_id)
+        except Exception as log_err:
+            print(f"[SYSTEM ERROR] Error en el gestor de log de la acción: {log_err}")
+            
+        # 7. Mandar email de auditoría leyendo el log físico (con el archivo de log ya CERRADO)
+        if log_filepath and os.path.exists(log_filepath):
+            try:
+                with open(log_filepath, "r", encoding="utf-8") as lf:
+                    log_lines = lf.readlines()
+                run_email_async(action_name, [line.strip() for line in log_lines])
+            except Exception as mail_err:
+                print(f"[SMTP ERROR] No se pudo enviar el email de auditoría: {mail_err}")
                     
     threading.Thread(target=target, daemon=True).start()
 
