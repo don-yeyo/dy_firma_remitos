@@ -24,13 +24,13 @@ $SubdomainFile = Join-Path $TunnelDir "serveo_subdomain.txt"
 
 if (Test-Path $SubdomainFile) {
     $Subdomain = (Get-Content -Path $SubdomainFile -Raw).Trim()
-    Write-Host "[OK] Cargando subdominio persistente anterior: $Subdomain.serveo.net" -ForegroundColor Green
+    Write-Host "[OK] Cargando subdominio persistente anterior: $Subdomain.serveousercontent.com" -ForegroundColor Green
 } else {
     # Generar un subdominio legible y aleatorio
     $RandomSuffix = Get-Random -Minimum 1000 -Maximum 9999
     $Subdomain = "dy-remitos-$RandomSuffix"
     Set-Content -Path $SubdomainFile -Value $Subdomain -Encoding UTF8
-    Write-Host "[OK] Generado nuevo subdominio persistente amigable: $Subdomain.serveo.net" -ForegroundColor Green
+    Write-Host "[OK] Generado nuevo subdominio persistente amigable: $Subdomain.serveousercontent.com" -ForegroundColor Green
 }
 
 # 2b. Crear y configurar Llave SSH persistente (Requerida por Serveo para subdominios fijos)
@@ -49,7 +49,6 @@ if (-not (Test-Path $SshKeyPath)) {
 }
 
 # Configurar permisos NTFS estrictos (ACL) para id_rsa (Requerido obligatoriamente por OpenSSH en Windows)
-# Si los permisos de la clave privada son demasiado abiertos, OpenSSH abortará la conexión silenciosamente.
 Write-Host "Configurando permisos de seguridad (ACL) estrictos para la clave privada..." -ForegroundColor Yellow
 try {
     $Acl = Get-Acl $SshKeyPath
@@ -110,23 +109,27 @@ Write-Host "1. Abre el siguiente enlace en tu navegador para registrar tu clave 
 Write-Host "   $KeyRegistryUrl" -ForegroundColor Cyan
 Write-Host "2. Inicia sesion con tu cuenta de Google o GitHub."
 Write-Host "3. Haz clic en 'Register' o 'Authorize' para asociar tu clave."
-Write-Host "4. Once completado en el navegador, regresa aqui y presiona [ENTER]."
+Write-Host "4. Una vez completado en el navegador, regresa aqui y presiona [ENTER]."
 Write-Host "====================================================================" -ForegroundColor Yellow
-Write-Host "Iniciando conexion temporal de registro en segundo plano..." -ForegroundColor Gray
+Write-Host "Iniciando conexion de registro de fondo..." -ForegroundColor Gray
 Start-Sleep -Seconds 2
 
-# Lanzar SSH en segundo plano
+# Lanzar SSH en segundo plano redirigiendo su salida para no desalinear la terminal
+$TempLogPath = Join-Path $TunnelDir "serveo_temp.log"
+Remove-Item -Path $TempLogPath -ErrorAction SilentlyContinue | Out-Null
+
 $SshArgs = @("-i", "`"$SshKeyPath`"", "-o", "StrictHostKeyChecking=no", "-o UserKnownHostsFile=\\.\NUL", "-R", "`"${Subdomain}:80:localhost:8000`"", "serveo.net")
-$SshProcess = Start-Process -FilePath "$SshPath" -ArgumentList $SshArgs -NoNewWindow -PassThru -ErrorAction SilentlyContinue
+$SshProcess = Start-Process -FilePath "$SshPath" -ArgumentList $SshArgs -NoNewWindow -PassThru -RedirectStandardOutput "$TempLogPath" -RedirectStandardError "$TempLogPath" -ErrorAction SilentlyContinue
 
 Write-Host ""
-Read-Host "Presioná [ENTER] una vez que hayas registrado la clave en tu navegador"
+Read-Host "  Presioná [ENTER] una vez que hayas registrado la clave en tu navegador"
 
 # Matar el proceso SSH temporal de registro
 if ($SshProcess -and -not $SshProcess.HasExited) {
-    Write-Host "`nDeteniendo conexion temporal de registro..." -ForegroundColor Gray
+    Write-Host "  Deteniendo conexion temporal de registro..." -ForegroundColor Gray
     Stop-Process -Id $SshProcess.Id -Force -ErrorAction SilentlyContinue
 }
+Remove-Item -Path $TempLogPath -ErrorAction SilentlyContinue | Out-Null
 
 Write-Host "`n[OK] Conexion temporal finalizada. Continuando con la instalacion del servicio de fondo..." -ForegroundColor Green
 Start-Sleep -Seconds 2
@@ -137,7 +140,7 @@ Write-Host "`n[Paso 3/5] Creando scripts de auto-reconexión del túnel..." -For
 $RunnerScriptPath = Join-Path $TunnelDir "run_serveo_runner.ps1"
 $RunnerContent = @"
 # Script de ejecución persistente con auto-reconexión para Serveo
-Write-Host "[SERVIEO] Iniciando túnel para $Subdomain.serveo.net..." -ForegroundColor Cyan
+Write-Host "[SERVIEO] Iniciando túnel para $Subdomain.serveousercontent.com..." -ForegroundColor Cyan
 
 while (`$true) {
     try {
@@ -181,15 +184,15 @@ Start-Sleep -Seconds 3
 Write-Host "`n====================================================================" -ForegroundColor Green
 Write-Host "  [PROCESO COMPLETADO CON EXITO]" -ForegroundColor Green
 Write-Host "  El túnel Serveo ya corre de fondo en la VM Server."
-Write-Host "  URL pública fija del backend: https://$Subdomain.serveo.net"
-Write-Host "  URL alternativa HTTP:         http://$Subdomain.serveo.net"
+Write-Host "  URL pública fija del backend: https://$Subdomain.serveousercontent.com"
+Write-Host "  URL alternativa HTTP:         http://$Subdomain.serveousercontent.com"
 Write-Host "`n  Rutas útiles de prueba:"
-Write-Host "  - Estado API: https://$Subdomain.serveo.net/api/status"
-Write-Host "  - Docs Swagger: https://$Subdomain.serveo.net/docs"
+Write-Host "  - Estado API: https://$Subdomain.serveousercontent.com/api/status"
+Write-Host "  - Docs Swagger: https://$Subdomain.serveousercontent.com/docs"
 Write-Host "====================================================================" -ForegroundColor Green
 
 Write-Host "`n[ATENCION] Recordá configurar este subdominio fijo en Netlify:"
-Write-Host "VITE_API_URL=https://$Subdomain.serveo.net" -ForegroundColor Cyan
+Write-Host "VITE_API_URL=https://$Subdomain.serveousercontent.com" -ForegroundColor Cyan
 Write-Host "====================================================================" -ForegroundColor Green
 Write-Host "`n  Nota: Para pruebas manuales de depuración en consola (VERBOSO), usa:"
 Write-Host "  ssh -v -i $SshKeyPath -R ${Subdomain}:80:localhost:8000 serveo.net" -ForegroundColor Gray
