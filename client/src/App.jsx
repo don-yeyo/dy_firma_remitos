@@ -1,5 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
+
+// Interceptor global: agrega el header requerido por ngrok (plan gratuito)
+// para saltar la página interstitial de advertencia en todas las peticiones.
+axios.interceptors.request.use((config) => {
+  config.headers['ngrok-skip-browser-warning'] = 'true';
+  return config;
+});
 import { useAuth } from './config/AuthContext';
 import packageJson from '../package.json';
 import {

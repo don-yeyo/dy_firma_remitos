@@ -102,8 +102,8 @@ graph TD
         A["Cliente React (Netlify) <br> https://dy-firem.netlify.app/"]
         AAD["Microsoft Entra ID <br> (Microsoft Auth)"]
     end
-    subgraph Serveo ["SSH Tunneling Service"]
-        ST["Serveo Tunnel <br> (*.serveo.net)"]
+    subgraph NgrokCloud ["ngrok Cloud"]
+        NG["ngrok Tunnel <br> (*.ngrok-free.app)"]
     end
     subgraph Corporativo ["Red LAN Local (Don Yeyo S.A.)"]
         VM["VM Windows Server <br> (FastAPI Backend - Port 8000)"]
@@ -115,8 +115,8 @@ graph TD
     end
 
     A -->|1. Autentica con| AAD
-    A -->|2. Peticiones HTTPS| ST
-    ST -->|3. Túnel SSH Inverso| VM
+    A -->|2. Peticiones HTTPS| NG
+    NG -->|3. Túnel ngrok| VM
     VM -->|4. Comando WIA Scan| R
     VM -->|5. Guarda Auditoría| DB
     VM -->|6. Sincroniza Remitos| ERP
@@ -130,7 +130,7 @@ sequenceDiagram
     actor Operador
     participant App as Frontend (Netlify / https://dy-firem.netlify.app/)
     participant AAD as Microsoft Entra ID (Auth)
-    participant ST as Serveo Tunnel (HTTPS FQDN)
+    participant NG as ngrok Tunnel (HTTPS FQDN)
     participant VM as Backend (VM Local / FastAPI)
     participant Ricoh as Multifunción Ricoh IM C300
 
@@ -138,53 +138,46 @@ sequenceDiagram
     App->>AAD: Redirecciona para Login Corporativo
     AAD-->>App: Retorna Token JWT de Acceso (Usuario OK)
     Operador->>App: Presiona "Escanear + Procesar Todo"
-    App->>ST: HTTP POST /api/scan-and-process (con Token)
-    Note over ST: El Túnel redirige de forma segura<br/>cruzando el firewall de la VM
-    ST->>VM: Reenvía petición a http://localhost:8000
+    App->>NG: HTTP POST /api/scan-and-process (con Token)
+    Note over NG: El Túnel redirige de forma segura<br/>cruzando el firewall de la VM
+    NG->>VM: Reenvía petición a http://127.0.0.1:8000
     VM->>Ricoh: Ejecuta escaneo WIA COM (ADF / SPDF)
     Ricoh-->>VM: Retorna imágenes JPG del remito
     Note over VM: Ejecuta OCR & VLM local o nube
-    VM-->>ST: Retorna JSON de resultados de firma y URLs
-    ST-->>App: Retorna respuesta al navegador
+    VM-->>NG: Retorna JSON de resultados de firma y URLs
+    NG-->>App: Retorna respuesta al navegador
     App-->>Operador: Muestra progreso y remitos digitalizados en pantalla
 ```
 
 ---
 
-## 🌐 Conectividad Externa: Descarte de Cloudflare Tunnel y Migración a Serveo.net
+## 🌐 Conectividad Externa: Túnel ngrok para Exposición del Backend
 
-### 🔍 Justificación del Descarte de Cloudflare Tunnel (Named Tunnel)
+### 🔍 Contexto
 
-Originalmente se planificó utilizar **Cloudflare Tunnel** de forma nominada y persistente (`setup_cloudflare_tunnel.ps1`) para mapear el subdominio `firem-api.donyeyo.com.ar` hacia la máquina virtual del servidor local. 
+La VM de Windows Server que corre el backend FastAPI está detrás de un NAT/Firewall corporativo sin IP pública accesible. Para que el frontend desplegado en Netlify pueda comunicarse con el backend, se utiliza **ngrok** como túnel HTTP inverso.
 
-Sin embargo, durante las pruebas de red y diagnóstico en la terminal de la VM:
-```powershell
-PS C:\Users\Administrador> Resolve-DnsName donyeyo.com.ar -Type NS
-Name                           Type   TTL   Section    NameHost
-----                           ----   ---   -------    --------
-donyeyo.com.ar                 NS     14400 Answer     ns10.hostmar.com
-donyeyo.com.ar                 NS     14400 Answer     ns9.hostmar.com
-```
+> **Nota Histórica**: Se descartaron previamente Cloudflare Tunnel (por requerir delegación DNS en el panel de DonWeb) y Serveo.net (por inestabilidad en la reserva de subdominios, errores de port forwarding SSH y problemas con IPv6).
 
-Se determinó que:
-1. **Delegación de DNS Externa**: El dominio base `donyeyo.com.ar` no está apuntado a los Name Servers (NS) de Cloudflare, sino que está delegado en **DonWeb** (`ns9.hostmar.com` y `ns10.hostmar.com`).
-2. **Restricción de Panel**: Modificar o crear el subdominio `firem-api.donyeyo.com.ar` requería acceso directo al panel administrativo del hosting de DonWeb. Debido a la complejidad de obtener credenciales de hosting y delegar zonas DNS específicas en tiempo real, la automatización a través del comando `cloudflared tunnel route dns` resultaba inviable y arrojaba fallos de resolución DNS local (`Resolve-DnsName : El nombre DNS no existe`).
+### 🚀 La Solución Adoptada: ngrok
 
----
+[ngrok](https://ngrok.com) es el estándar de la industria para túneles HTTP inversos. Su plan gratuito incluye:
 
-### 🚀 La Solución Adoptada: Túnel SSH Inverso con Serveo.net
+*   **1 dominio estático** (`*.ngrok-free.app`) que no cambia entre reinicios
+*   Sin dependencias de SSH, claves, ni configuración DNS
+*   Dashboard web de monitoreo en `http://127.0.0.1:4040`
+*   Binario único descargable, sin instalación compleja
 
-Para evitar la complejidad del panel DNS de DonWeb y a su vez erradicar los túneles efímeros de Cloudflare (`trycloudflare.com` que cambian su URL en cada reinicio del servidor y obligan a redesplegar el frontend en Netlify), se optó por **Serveo.net**.
+#### Características del Script `setup_ngrok_tunnel.ps1`:
+*   **Descarga Automática**: Si `C:\ngrok\ngrok.exe` no existe, lo descarga desde la web oficial.
+*   **Autenticación Guiada**: Solicita al operador su authtoken de ngrok (obtenido una sola vez desde el dashboard web).
+*   **Dominio Estático Persistente**: Solicita y guarda el dominio gratuito asignado en `C:\ngrok\ngrok_domain.txt`.
+*   **Limpieza de Conflictos**: Detiene y desinstala procesos/servicios residuales de Serveo, Cloudflared y túneles SSH huérfanos.
+*   **Auto-Reconexión de Fondo**: Genera un runner en PowerShell (`run_ngrok.ps1`) con loop de reintentos y lo registra en la Tarea Programada de Windows `NgrokTunnelTask` bajo la cuenta `SYSTEM`.
+*   **Logs Físicos**: Escribe los logs de ngrok en `C:\ngrok\ngrok_tunnel.log` para depuración.
 
-Serveo.net permite crear un túnel inverso por SSH que expone el puerto local de la VM hacia Internet bajo un subdominio gratuito y **estable/persistente**.
-
-#### Características del Script `setup_serveo_tunnel.ps1`:
-* **Subdominio Fijo y Persistente**: La primera vez que se corre el script en la VM, este genera un subdominio legible al azar (ej: `dy-remitos-5821.serveo.net`) y lo guarda de forma persistente en el archivo local `C:\cloudflared\serveo_subdomain.txt`. En los siguientes arranques o reinicios de la máquina virtual, se reutiliza el mismo subdominio para evitar tener que reconfigurar la URL en Netlify.
-* **Reserva de Identidad por Llave SSH**: Serveo requiere el envío de una clave pública para reservar subdominios fijos en su servidor. El script genera una clave SSH local robusta de 2048 bits en `C:\cloudflared\id_rsa` y la pasa explícitamente con el parámetro `-i` de SSH. Esto previene que Serveo asigne una URL aleatoria inestable (`serveousercontent.com`) o rechace el subdominio.
-* **Limpieza de Conflictos**: Detiene y desinstala cualquier servicio o proceso residual de `cloudflared.exe` o túneles SSH huérfanos anteriores.
-* **Auto-Reconexión de Fondo**: Genera un runner en PowerShell (`run_serveo_runner.ps1`) y lo registra en el Programador de Tareas de Windows Server bajo el nombre `ServeoTunnelTask`.
-* **Arranque con SYSTEM**: La tarea está programada para iniciarse automáticamente con el sistema (`/sc onstart`) bajo el contexto del usuario del sistema `SYSTEM`, de forma oculta (`-WindowStyle Hidden`).
-* **Keep-Alive e Inmunidad a Fallos**: Configura SSH con los flags `-o ExitOnForwardFailure=yes` (para forzar la desconexión del comando SSH si Serveo no libera el puerto a tiempo, gatillando el reintento), `-o UserKnownHostsFile=\\.\NUL` (para evitar errores de escritura de host key en el perfil del sistema) y `-o ServerAliveInterval=30`.
+#### Header `ngrok-skip-browser-warning`
+El plan gratuito de ngrok muestra una página interstitial de advertencia cuando un navegador accede directamente a la URL. Para que las llamadas de API del frontend (axios) la salteen de forma transparente, se inyecta el header `ngrok-skip-browser-warning: true` en todas las peticiones HTTP usando un interceptor global de axios en `App.jsx`.
 
 ---
 
@@ -192,27 +185,34 @@ Serveo.net permite crear un túnel inverso por SSH que expone el puerto local de
 
 Para levantar la exposición pública fija de la API, sigue estos pasos:
 
-1. **Abrir PowerShell como Administrador** en la máquina virtual.
-2. Navega al directorio raíz del proyecto y ejecuta el script del túnel:
+1. **Crear una cuenta gratuita en ngrok** (una sola vez):
+   * Accede a [https://ngrok.com](https://ngrok.com) y crea una cuenta con Google/GitHub/email.
+   * En el dashboard, ve a **Your Authtoken** y copia el token.
+   * Ve a **Domains** y anota tu dominio estático gratuito (ej: `algo-random.ngrok-free.app`).
+
+2. **Abrir PowerShell como Administrador** en la máquina virtual y ejecutar:
    ```powershell
    Set-ExecutionPolicy Bypass -Scope Process -Force
-   .\setup_serveo_tunnel.ps1
+   .\setup_ngrok_tunnel.ps1
    ```
-3. El script limpiará el entorno, generará la llave de seguridad SSH en `C:\cloudflared\id_rsa`, creará el subdominio permanente y arrancará el proceso en segundo plano. Al finalizar, mostrará en pantalla la URL generada:
+3. El script te pedirá pegar el authtoken y el dominio estático (solo la primera vez). Luego descargará ngrok, limpiará el entorno y levantará el túnel de fondo. Al finalizar mostrará:
    ```text
    ====================================================================
      [PROCESO COMPLETADO CON EXITO]
-     El túnel Serveo ya corre de fondo en la VM Server.
-     URL pública fija del backend: https://dy-remitos-5821.serveo.net
-     URL alternativa HTTP:         http://dy-remitos-5821.serveo.net
+     El tunel ngrok ya corre de fondo en la VM Server.
+
+     URL publica fija del backend:
+     https://tu-dominio.ngrok-free.app
+
+     Rutas utiles de prueba:
+     - Estado API:   https://tu-dominio.ngrok-free.app/api/status
+     - Docs Swagger: https://tu-dominio.ngrok-free.app/docs
+     - Dashboard:    http://127.0.0.1:4040
    ====================================================================
    ```
-   > [!NOTE]
-   > Para realizar pruebas manuales de depuración por consola o visualizar los logs del túnel en tiempo real, ejecuta:
-   > `ssh -i C:\cloudflared\id_rsa -R dy-remitos-5821:80:localhost:8000 serveo.net`
 
 4. **Actualizar el Frontend (Netlify)**:
-   * Copia la URL pública fija obtenida (ej: `https://dy-remitos-5821.serveo.net`).
+   * Copia la URL pública fija obtenida (ej: `https://tu-dominio.ngrok-free.app`).
    * Accede a tu panel administrativo de Netlify (`https://dy-firem.netlify.app/`).
    * Ve a **Site Configuration** → **Environment variables**.
    * Modifica la variable de entorno `VITE_API_URL` con el nuevo valor.
