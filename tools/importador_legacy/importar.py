@@ -14,6 +14,7 @@ import sys
 import glob
 import shutil
 import argparse
+from datetime import datetime, date
 try:
     import openpyxl
 except ImportError:
@@ -200,7 +201,7 @@ def process_excel_file(file_path, conn, existing_db_records, fecha_desde=None):
     count_skipped_date = 0
     count_skipped_invalid = 0
 
-    for idx, r in enumerate(rows[1:], start=2):
+    for idx, r in enumerate(rows[1:], start=1):
         row_dict = dict(zip(headers, r))
         
         raw_tx_id = row_dict.get('TransaccionID')
@@ -280,10 +281,22 @@ def process_excel_file(file_path, conn, existing_db_records, fecha_desde=None):
             }
             count_inserted += 1
 
+        # Mostrar avance en la consola cada 500 filas o en la última fila
+        if idx % 500 == 0 or idx == total_excel_rows:
+            pct = (idx / total_excel_rows) * 100
+            sys.stdout.write(
+                f"\r[PROCESO] Leyendo registro {idx:,}/{total_excel_rows:,} ({pct:.1f}%) | Nuevos: {count_inserted:,} | Actualizar: {count_updated:,} | Omitidos: {count_skipped_date + count_skipped_invalid:,}"
+            )
+            sys.stdout.flush()
+
+    print()  # Nueva línea al finalizar la lectura
+
     # Ejecutar Batch SQL de Inserts y Updates para alta velocidad
     BATCH_SIZE = 1000
     with conn.cursor() as cursor:
         if inserts_batch:
+            total_ins_batches = (len(inserts_batch) + BATCH_SIZE - 1) // BATCH_SIZE
+            print(f"[BD] Insertando {len(inserts_batch):,} registros nuevos en MySQL ({total_ins_batches} lotes)...")
             sql_insert = """
                 INSERT INTO remitos (
                     finne_transaccionID, finne_Copias, finne_Fecha, finne_CodigoCliente,
@@ -296,8 +309,15 @@ def process_excel_file(file_path, conn, existing_db_records, fecha_desde=None):
                 chunk = inserts_batch[i:i + BATCH_SIZE]
                 cursor.executemany(sql_insert, chunk)
                 conn.commit()
+                batch_num = (i // BATCH_SIZE) + 1
+                pct = (batch_num / total_ins_batches) * 100
+                sys.stdout.write(f"\r[BD Insert] Lote {batch_num}/{total_ins_batches} ({pct:.1f}%) guardado")
+                sys.stdout.flush()
+            print()
 
         if updates_batch:
+            total_upd_batches = (len(updates_batch) + BATCH_SIZE - 1) // BATCH_SIZE
+            print(f"[BD] Actualizando {len(updates_batch):,} registros existentes en MySQL ({total_upd_batches} lotes)...")
             sql_update = """
                 UPDATE remitos SET
                     finne_Copias = %s,
@@ -318,6 +338,11 @@ def process_excel_file(file_path, conn, existing_db_records, fecha_desde=None):
                 chunk = updates_batch[i:i + BATCH_SIZE]
                 cursor.executemany(sql_update, chunk)
                 conn.commit()
+                batch_num = (i // BATCH_SIZE) + 1
+                pct = (batch_num / total_upd_batches) * 100
+                sys.stdout.write(f"\r[BD Update] Lote {batch_num}/{total_upd_batches} ({pct:.1f}%) guardado")
+                sys.stdout.flush()
+            print()
 
     print("\n====================================================================")
     print(f"  RESUMEN DE IMPORTACION LEGACY: {filename}")
