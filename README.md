@@ -153,11 +153,7 @@ sequenceDiagram
 
 ## 🌐 Conectividad Externa: Túnel ngrok para Exposición del Backend
 
-### 🔍 Contexto
-
-La VM de Windows Server que corre el backend FastAPI está detrás de un NAT/Firewall corporativo sin IP pública accesible. Para que el frontend desplegado en Netlify pueda comunicarse con el backend, se utiliza **ngrok** como túnel HTTP inverso.
-
-> **Nota Histórica**: Se descartaron previamente Cloudflare Tunnel (por requerir delegación DNS en el panel de DonWeb) y Serveo.net (por inestabilidad en la reserva de subdominios, errores de port forwarding SSH y problemas con IPv6).
+La VM de Windows Server que alberga el backend FastAPI opera dentro de una red LAN privada corporativa protegida por NAT/Firewall sin IP pública estática. Para exponer de manera segura y persistente la API hacia el frontend alojado en Netlify, se implementó una solución automatizada basada en **ngrok**.
 
 ### 🚀 La Solución Adoptada: ngrok
 
