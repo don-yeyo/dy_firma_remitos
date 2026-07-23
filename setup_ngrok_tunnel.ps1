@@ -23,6 +23,13 @@ if (-not (Test-Path $NgrokDir)) {
     New-Item -ItemType Directory -Path $NgrokDir -Force | Out-Null
 }
 
+# Excluir C:\ngrok en Windows Defender para evitar falsos positivos de software no deseado (PUA)
+try {
+    Add-MpPreference -ExclusionPath $NgrokDir -ErrorAction SilentlyContinue
+} catch {
+    # Ignorar si Defender no esta presente o gestionado por GPO
+}
+
 if (-not (Test-Path $NgrokExe)) {
     Write-Host "Descargando ngrok para Windows (amd64)..." -ForegroundColor Gray
     $NgrokZipUrl = "https://bin.equinox.io/c/bNyj1mQVY4c/ngrok-v3-stable-windows-amd64.zip"
@@ -42,7 +49,12 @@ if (-not (Test-Path $NgrokExe)) {
         }
     } catch {
         Write-Host "[ERROR] Fallo la descarga de ngrok: $_" -ForegroundColor Red
-        Write-Host "Descargalo manualmente desde https://ngrok.com/download y colocalo en $NgrokDir" -ForegroundColor Yellow
+        Write-Host ""
+        Write-Host "Windows Defender o tu antivirus bloqueo la descarga automatica (Falso Positivo de ngrok)." -ForegroundColor Yellow
+        Write-Host "Opciones para resolverlo:" -ForegroundColor Yellow
+        Write-Host "1. Descarga ngrok manualmente desde https://ngrok.com/download" -ForegroundColor White
+        Write-Host "2. Extrae 'ngrok.exe' directamente en la carpeta: C:\ngrok\ngrok.exe" -ForegroundColor White
+        Write-Host "3. Vuelve a ejecutar este script." -ForegroundColor White
         exit 1
     }
 } else {
