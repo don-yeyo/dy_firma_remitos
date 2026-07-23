@@ -19,7 +19,10 @@ try:
 except ImportError:
     print("[INFO] Instalando librería 'openpyxl' necesaria para procesar archivos Excel...")
     import subprocess
-    subprocess.check_call([sys.executable, "-m", "pip", "install", "openpyxl"])
+    try:
+        subprocess.check_call(["uv", "pip", "install", "openpyxl"])
+    except Exception:
+        subprocess.check_call([sys.executable, "-m", "pip", "install", "openpyxl"])
     import openpyxl
 import pymysql
 from dotenv import load_dotenv
