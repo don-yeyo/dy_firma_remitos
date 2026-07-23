@@ -176,8 +176,9 @@ La VM de Windows Server que corre el backend FastAPI está detrás de un NAT/Fir
 *   **Auto-Reconexión de Fondo**: Genera un runner en PowerShell (`run_ngrok.ps1`) con loop de reintentos y lo registra en la Tarea Programada de Windows `NgrokTunnelTask` bajo la cuenta `SYSTEM`.
 *   **Logs Físicos**: Escribe los logs de ngrok en `C:\ngrok\ngrok_tunnel.log` para depuración.
 
-#### Header `ngrok-skip-browser-warning`
-El plan gratuito de ngrok muestra una página interstitial de advertencia cuando un navegador accede directamente a la URL. Para que las llamadas de API del frontend (axios) la salteen de forma transparente, se inyecta el header `ngrok-skip-browser-warning: true` en todas las peticiones HTTP usando un interceptor global de axios en `App.jsx`.
+#### Header `ngrok-skip-browser-warning` y Autenticación `X-API-Key`
+- **Bypass de Advertencia ngrok**: Para evitar la pantalla interstitial del plan gratuito, el frontend inyecta `ngrok-skip-browser-warning: true` en las peticiones HTTP.
+- **Protección de API (`X-API-Key`)**: Para prevenir que terceros accedan a las APIs del backend expuesto en ngrok, el servidor FastAPI valida la presencia de un encabezado `X-API-Key` (configurado en `API_SECRET_KEY` en `.env`). El cliente React adjunta automáticamente este encabezado (`VITE_API_SECRET_KEY`) a través de un interceptor global de Axios en `App.jsx`. Toda petición no autenticada es rechazada con un código `401 Unauthorized`.
 
 ---
 
