@@ -86,6 +86,7 @@ function App() {
   const [summaryData, setSummaryData] = useState(null); // Estadísticas del modal final
   const [showCancelConfirm, setShowCancelConfirm] = useState(false); // Confirmar cancelación premium
   const [cancelRequested, setCancelRequested] = useState(false); // Bandera de estado en cancelación
+  const currentActionIdRef = useRef(null); // ID unívoco de la acción activa iniciada por el frontend
 
   // Dashboard & Estadísticas
   const [dashboardStats, setDashboardStats] = useState(null);
@@ -154,48 +155,61 @@ function App() {
         const res = await axios.get(`${apiUrl}/api/status`);
         if (!isMounted) return;
 
-        setStatus(res.data.status);
-        setCancelRequested(res.data.cancel_requested || false);
-        setProgress({
-          message: res.data.progress_message || '',
-          current: res.data.current_step || 0,
-          total: res.data.total_steps || 0
-        });
-
-        if (res.data.status === 'idle') {
-          setCancelRequested(false);
-          // El servidor finalizó el trabajo
-          if (res.data.last_result) {
-            setSummaryData(res.data.last_result);
-          } else if (actionStarted) {
-            // Si el frontend disparó una acción y esta finalizó, forzamos un resumen genérico de confirmación
-            setSummaryData({
-              success: true,
-              cancelled: false,
-              type: status,
-              message: "Proceso completado. Los datos han sido guardados.",
-              summary: {
-                escaneados: 0,
-                exitosasIa: 0,
-                fallidosIa: 0,
-                bdActualizados: 0,
-                bdNoEncontrados: 0
-              }
-            });
-          } else {
-            // Si el servidor pasó a reposo pero no hay resultados ni acción disparada, cerramos el modal
-            setShowModal(false);
-            setActionStarted(false);
-          }
-          fetchHistory(currentPage); // Recargar historial automáticamente
+        // Si el servidor está procesando, actualizamos el progreso en tiempo real
+        if (res.data.status !== 'idle') {
+          setStatus(res.data.status);
+          setCancelRequested(res.data.cancel_requested || false);
+          setProgress({
+            message: res.data.progress_message || '',
+            current: res.data.current_step || 0,
+            total: res.data.total_steps || 0
+          });
+          return;
         }
+
+        // Si el servidor indica 'idle':
+        // Validar que no sea un resultado viejo de una ejecución previa
+        const targetActionId = currentActionIdRef.current;
+        const lastResultActionId = res.data.last_result?.action_id;
+
+        if (targetActionId && lastResultActionId && lastResultActionId !== targetActionId) {
+          // El resultado final que reporta el servidor pertenece a un proceso anterior.
+          // El nuevo proceso está arrancando en el backend. Ignoramos este 'idle' espurio y seguimos sondeando.
+          return;
+        }
+
+        // Si el estado es realmente reposo (idle) post-ejecución:
+        setStatus('idle');
+        setCancelRequested(false);
+        if (res.data.last_result) {
+          setSummaryData(res.data.last_result);
+        } else if (actionStarted) {
+          setSummaryData({
+            success: true,
+            cancelled: false,
+            type: status,
+            message: "Proceso completado. Los datos han sido guardados.",
+            summary: {
+              escaneados: 0,
+              exitosasIa: 0,
+              fallidosIa: 0,
+              bdActualizados: 0,
+              bdNoEncontrados: 0
+            }
+          });
+        } else {
+          setShowModal(false);
+          setActionStarted(false);
+        }
+        currentActionIdRef.current = null;
+        fetchHistory(currentPage);
       } catch (err) {
         // Enlace temporalmente offline
       }
     };
 
     fetchStatus();
-    const interval = setInterval(fetchStatus, 3000);
+    const interval = setInterval(fetchStatus, 1000);
 
     return () => {
       isMounted = false;
@@ -385,6 +399,7 @@ function App() {
 
   const handleAction = async (endpoint, actionName) => {
     try {
+      currentActionIdRef.current = null;
       setStatus(endpoint === 'scan-and-process' ? 'scanning-and-processing' :
         endpoint === 'scan' ? 'scanning' :
           endpoint === 'process' ? 'processing' : 'syncing');
@@ -394,7 +409,9 @@ function App() {
       setSummaryData(null);
 
       const res = await axios.post(`${apiUrl}/api/${endpoint}`);
-      if (res.data.status !== 'started') {
+      if (res.data.status === 'started' && res.data.action_id) {
+        currentActionIdRef.current = res.data.action_id;
+      } else if (res.data.status !== 'started') {
         if (res.data.message && res.data.message.includes("ocupado")) {
           if (window.confirm(`${res.data.message}\n\n¿Desea forzar la cancelación y desbloquear el servidor a reposo de inmediato?`)) {
             try {
